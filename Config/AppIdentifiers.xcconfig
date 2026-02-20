@@ -16,13 +16,13 @@
 
 
 // App identity
-BUNDLE_DISPLAY_NAME = Element Classic
-BASE_BUNDLE_IDENTIFIER = im.vector.app
-APPLICATION_GROUP_IDENTIFIER = group.im.vector
+BUNDLE_DISPLAY_NAME = BatChat
+BASE_BUNDLE_IDENTIFIER = la.sdc.batchat
+APPLICATION_GROUP_IDENTIFIER = group.la.sdc.batchat
 APPLICATION_SCHEME = element
 
 // Team
-DEVELOPMENT_TEAM = 7J4U792NQT
+DEVELOPMENT_TEAM = BYQM86PQBB
 
 
 // Provisioning profiles

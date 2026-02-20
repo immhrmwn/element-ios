@@ -1,6 +1,6 @@
-name: Riot
+name: BatChat
 attributes:
-  ORGANIZATIONNAME: matrix.org
+  ORGANIZATIONNAME: la.sdc.batchat
 
 configs:
   Debug: debug
