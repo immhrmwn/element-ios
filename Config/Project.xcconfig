@@ -44,3 +44,7 @@ CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE
 
 CLANG_ENABLE_MODULES = YES
 CLANG_ENABLE_OBJC_ARC = YES
+
+// Workaround for Xcode 26+: fix "unable to find module dependency 'libcmark'"
+// See https://github.com/element-hq/element-ios/issues/7981
+SWIFT_ENABLE_EXPLICIT_MODULES = NO

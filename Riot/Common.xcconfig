@@ -32,3 +32,7 @@ SWIFT_OBJC_BRIDGING_HEADER = $(SRCROOT)/Riot/SupportingFiles/Riot-Bridging-Heade
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
 
 SWIFT_OBJC_INTERFACE_HEADER_NAME = GeneratedInterface-Swift.h
+
+// Workaround for Xcode 26+: fix "unable to find module dependency 'libcmark'"
+// See https://github.com/element-hq/element-ios/issues/7981
+SWIFT_ENABLE_EXPLICIT_MODULES = NO

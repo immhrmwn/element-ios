@@ -1,0 +1,2 @@
+---
+BUNDLE_BUILD__NOKOGIRI: "--use-system-libraries --with-xml2-include=/opt/homebrew/opt/libxml2/include/libxml2 --with-xml2-lib=/opt/homebrew/opt/libxml2/lib --with-xslt-include=/opt/homebrew/opt/libxslt/include --with-xslt-lib=/opt/homebrew/opt/libxslt/lib"

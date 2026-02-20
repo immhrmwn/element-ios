@@ -1,5 +1,7 @@
 source 'https://github.com/CocoaPods/Specs.git'
 
+project 'Riot.xcodeproj'
+
 # Uncomment this line to define a global platform for your project
 platform :ios, '15.0'
 
@@ -7,7 +9,7 @@ platform :ios, '15.0'
 inhibit_all_warnings!
 
 # Use frameworks to allow usage of pods written in Swift
-use_frameworks!
+use_frameworks! :linkage => :static
 
 # Method to import the MatrixSDK
 def import_MatrixSDK
