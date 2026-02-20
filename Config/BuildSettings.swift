@@ -55,11 +55,11 @@ final class BuildSettings: NSObject {
     }
     
     static var pusherAppIdProd: String {
-        return baseBundleIdentifier + ".ios.prod"
+        return baseBundleIdentifier
     }
     
     static var pusherAppIdDev: String {
-        return baseBundleIdentifier + ".ios.dev"
+        return baseBundleIdentifier
     }
     
     static var pushKitAppId: String {
@@ -95,14 +95,22 @@ final class BuildSettings: NSObject {
 
     /// Default server proposed on the authentication screen
     static var serverConfigDefaultHomeserverUrlString: String {
-        MDMSettings.serverConfigDefaultHomeserverUrlString ?? "https://matrix.org"
+        #if DEBUG
+        return MDMSettings.serverConfigDefaultHomeserverUrlString ?? "https://element.sdc.la"
+        #else
+        return MDMSettings.serverConfigDefaultHomeserverUrlString ?? "https://bats.chat"
+        #endif
     }
     
     /// Default identity server
     static let serverConfigDefaultIdentityServerUrlString = "https://vector.im"
         
     static var serverConfigSygnalAPIUrlString: String {
-        MDMSettings.serverConfigSygnalAPIUrlString ?? "https://matrix.org/_matrix/push/v1/notify"
+        #if DEBUG
+        return MDMSettings.serverConfigSygnalAPIUrlString ?? "https://push.sdc.la/_matrix/push/v1/notify"
+        #else
+        return MDMSettings.serverConfigSygnalAPIUrlString ?? "https://bats.chat/_matrix/push/v1/notify"
+        #endif
     }
     
     // MARK: - Legal URLs
