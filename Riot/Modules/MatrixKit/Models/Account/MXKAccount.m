@@ -134,6 +134,7 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
         
         // Report credentials and alloc REST client.
         _mxCredentials = credentials;
+        MXLogDebug(@"🔔 [MXKAccount] auth token: %@", credentials.accessToken);
         [self prepareRESTClient];
         
         userPresence = MXPresenceUnknown;
