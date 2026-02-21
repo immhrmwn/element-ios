@@ -24,6 +24,10 @@ final class RiotSettings: NSObject {
         static let enableUISIAutoReporting = "enableUISIAutoReporting"
         static let enableLiveLocationSharing = "enableLiveLocationSharing"
         static let showIPAddressesInSessionsManager = "showIPAddressesInSessionsManager"
+        // Disappearing messages (room retention)
+        static let roomRetentionPolicies = "roomRetentionPolicies"
+        static let roomRetentionStartTimestamps = "roomRetentionStartTimestamps"
+        static let defaultRoomRetentionPolicySeconds = "defaultRoomRetentionPolicySeconds"
     }
     
     static let shared = RiotSettings()
@@ -393,6 +397,80 @@ final class RiotSettings: NSObject {
     @UserDefault(key: "lastNumberOfTrackedSpaces", defaultValue: nil, storage: defaults)
     var lastNumberOfTrackedSpaces: Int?
     
+    // MARK: - Disappearing messages (room retention)
+    
+    /// Default retention policy for new rooms (nil = off).
+    var defaultRoomRetentionPolicy: RoomRetentionPolicy? {
+        get {
+            guard let seconds = RiotSettings.defaults.object(forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds) as? Int else { return nil }
+            return RoomRetentionPolicy(maxLifetimeSeconds: seconds)
+        }
+        set {
+            if let policy = newValue {
+                RiotSettings.defaults.set(policy.maxLifetimeSeconds, forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds)
+            } else {
+                RiotSettings.defaults.removeObject(forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds)
+            }
+        }
+    }
+    
+    func roomRetentionPolicy(for roomID: String) -> RoomRetentionPolicy? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies),
+              let dict = try? JSONDecoder().decode([String: Int].self, from: data),
+              let seconds = dict[roomID] else { return nil }
+        return RoomRetentionPolicy(maxLifetimeSeconds: seconds)
+    }
+    
+    func setRoomRetentionPolicy(_ policy: RoomRetentionPolicy?, for roomID: String) {
+        var dict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies).flatMap { try JSONDecoder().decode([String: Int].self, from: $0) }) ?? [:]
+        if let policy = policy {
+            dict[roomID] = policy.maxLifetimeSeconds
+        } else {
+            dict.removeValue(forKey: roomID)
+        }
+        if let data = try? JSONEncoder().encode(dict) {
+            RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.roomRetentionPolicies)
+        }
+    }
+    
+    func roomRetentionStartTimestamp(for roomID: String) -> TimeInterval? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionStartTimestamps),
+              let dict = try? JSONDecoder().decode([String: Double].self, from: data) else { return nil }
+        return dict[roomID]
+    }
+    
+    func setRoomRetentionStartTimestamp(_ timestamp: TimeInterval?, for roomID: String) {
+        var dict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionStartTimestamps).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        if let timestamp = timestamp {
+            dict[roomID] = timestamp
+        } else {
+            dict.removeValue(forKey: roomID)
+        }
+        if let data = try? JSONEncoder().encode(dict) {
+            RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.roomRetentionStartTimestamps)
+        }
+    }
+    
+    // MARK: - Obj-C bridge for room retention
+    
+    @objc func setRoomRetentionMaxLifetimeSeconds(_ seconds: NSNumber?, forRoomId roomId: String) {
+        let policy: RoomRetentionPolicy? = seconds.map { RoomRetentionPolicy(maxLifetimeSeconds: $0.intValue) }
+        setRoomRetentionPolicy(policy, for: roomId)
+    }
+    
+    @objc func roomRetentionMaxLifetimeSeconds(forRoomId roomId: String) -> NSNumber? {
+        guard let policy = roomRetentionPolicy(for: roomId) else { return nil }
+        return NSNumber(value: policy.maxLifetimeSeconds)
+    }
+    
+    @objc func setRoomRetentionStartTimestamp(_ timestamp: NSNumber?, forRoomId roomId: String) {
+        setRoomRetentionStartTimestamp(timestamp?.doubleValue, for: roomId)
+    }
+    
+    @objc func roomRetentionStartTimestamp(forRoomId roomId: String) -> NSNumber? {
+        guard let ts = roomRetentionStartTimestamp(for: roomId) else { return nil }
+        return NSNumber(value: ts)
+    }
 }
 
 // MARK: - RiotSettings notification constants

@@ -5531,6 +5531,26 @@ public class VectorL10n: NSObject {
   public static var roomDetailsDirectChat: String { 
     return VectorL10n.tr("Vector", "room_details_direct_chat") 
   }
+  /// 1 day
+  public static var roomDetailsDisappearingMessages1Day: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_day") 
+  }
+  /// 30 days
+  public static var roomDetailsDisappearingMessages30Days: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_30_days") 
+  }
+  /// 7 days
+  public static var roomDetailsDisappearingMessages7Days: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_7_days") 
+  }
+  /// Off
+  public static var roomDetailsDisappearingMessagesOff: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_off") 
+  }
+  /// Disappearing messages
+  public static var roomDetailsDisappearingMessagesSection: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_section") 
+  }
   /// Fail to add the new room addresses
   public static var roomDetailsFailToAddRoomAliases: String { 
     return VectorL10n.tr("Vector", "room_details_fail_to_add_room_aliases") 

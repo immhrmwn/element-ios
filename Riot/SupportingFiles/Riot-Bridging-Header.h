@@ -51,6 +51,7 @@
 #import "BubbleRoomTimelineCellProvider.h"
 #import "RoomSelectedStickerBubbleCell.h"
 #import "MXRoom+Riot.h"
+#import "MXRoomState+Retention.h"
 #import "UniversalLink.h"
 #import "VoiceBroadcastInfo.h"
 

@@ -19,6 +19,7 @@ Please see LICENSE in the repository root for full details.
 
 #import "MXRoom+Riot.h"
 #import "MXRoomSummary+Riot.h"
+#import "MXRoomState+Retention.h"
 
 #import "GeneratedInterface-Swift.h"
 
@@ -32,6 +33,7 @@ enum
     SECTION_TAG_ACCESS,
     SECTION_TAG_PROMOTION,
     SECTION_TAG_HISTORY,
+    SECTION_TAG_DISAPPEARING_MESSAGES,
     SECTION_TAG_ADDRESSES,
     SECTION_TAG_BANNED_USERS,
     SECTION_TAG_BANNED_ADVANCED
@@ -69,6 +71,14 @@ enum
 
 enum
 {
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS
+};
+
+enum
+{
     ROOM_SETTINGS_ADVANCED_ROOM_ID,
     ROOM_SETTINGS_ADVANCED_ENCRYPT_TO_VERIFIED,
     ROOM_SETTINGS_ADVANCED_ENCRYPTION_ENABLED,
@@ -101,6 +111,7 @@ NSString *const kRoomSettingsRemovedAliasesKey = @"kRoomSettingsRemovedAliasesKe
 NSString *const kRoomSettingsCanonicalAliasKey = @"kRoomSettingsCanonicalAliasKey";
 NSString *const kRoomSettingsEncryptionKey = @"kRoomSettingsEncryptionKey";
 NSString *const kRoomSettingsEncryptionBlacklistUnverifiedDevicesKey = @"kRoomSettingsEncryptionBlacklistUnverifiedDevicesKey";
+NSString *const kRoomSettingsDisappearingMessagesKey = @"kRoomSettingsDisappearingMessagesKey";
 
 NSString *const kRoomSettingsNameCellViewIdentifier = @"kRoomSettingsNameCellViewIdentifier";
 NSString *const kRoomSettingsTopicCellViewIdentifier = @"kRoomSettingsTopicCellViewIdentifier";
@@ -556,6 +567,32 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
         [sectionHistory addRowWithTag:ROOM_SETTINGS_HISTORY_VISIBILITY_SECTION_ROW_MEMBERS_ONLY_SINCE_JOINED];
         sectionHistory.headerTitle = [VectorL10n roomDetailsHistorySection];
         [tmpSections addObject:sectionHistory];
+    }
+    
+    // Disappearing messages (m.room.retention) - show if user can send state events
+    {
+        MXRoomPowerLevels *powerLevels = [mxRoomState powerLevels];
+        NSInteger oneSelfPowerLevel = [mxRoomState powerLevelOfUserWithUserID:self.mainSession.myUser.userId];
+        if (oneSelfPowerLevel >= [powerLevels minimumPowerLevelForSendingEventAsStateEvent:kMXEventTypeStringRoomRetention])
+        {
+            // Sync from server to local so timeline filtering has the policy
+            NSNumber *serverSeconds = [mxRoomState vc_maxLifetimeSeconds];
+            if (serverSeconds != nil && updatedItemsDict[kRoomSettingsDisappearingMessagesKey] == nil)
+            {
+                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:serverSeconds forRoomId:mxRoom.roomId];
+                if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:mxRoom.roomId] == nil)
+                {
+                    [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:mxRoom.roomId];
+                }
+            }
+            Section *sectionDisappearing = [Section sectionWithTag:SECTION_TAG_DISAPPEARING_MESSAGES];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS];
+            sectionDisappearing.headerTitle = [VectorL10n roomDetailsDisappearingMessagesSection];
+            [tmpSections addObject:sectionDisappearing];
+        }
     }
     
     if (RiotSettings.shared.roomSettingsScreenShowAddressSettings)
@@ -1632,6 +1669,50 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                 return;
             }
             
+            // Disappearing messages (m.room.retention)
+            NSNumber *disappearingSeconds = updatedItemsDict[kRoomSettingsDisappearingMessagesKey];
+            if (disappearingSeconds != nil)
+            {
+                long long maxLifetimeMs = disappearingSeconds.longLongValue * 1000;
+                NSDictionary *content = @{ @"max_lifetime": @(maxLifetimeMs) };
+                NSNumber *secondsToStore = disappearingSeconds;
+                pendingOperation = [mxRoom sendStateEventOfType:kMXEventTypeStringRoomRetention content:content stateKey:@"" success:^(NSString *eventId) {
+                    if (weakSelf)
+                    {
+                        typeof(self) self = weakSelf;
+                        self->pendingOperation = nil;
+                        [self->updatedItemsDict removeObjectForKey:kRoomSettingsDisappearingMessagesKey];
+                        if (secondsToStore.integerValue > 0)
+                        {
+                            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:secondsToStore forRoomId:self->mxRoom.roomId];
+                            [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self->mxRoom.roomId];
+                        }
+                        else
+                        {
+                            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:nil forRoomId:self->mxRoom.roomId];
+                            [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self->mxRoom.roomId];
+                        }
+                        [self onSave:nil];
+                    }
+                } failure:^(NSError *error) {
+                    MXLogDebug(@"[RoomSettingsViewController] Update room retention failed");
+                    if (weakSelf)
+                    {
+                        typeof(self) self = weakSelf;
+                        self->pendingOperation = nil;
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            NSString *message = error.localizedDescription;
+                            if (!message.length)
+                            {
+                                message = [VectorL10n roomDetailsFailToUpdateHistoryVisibility];
+                            }
+                            [self onSaveFailed:message withKeys:@[kRoomSettingsDisappearingMessagesKey]];
+                        });
+                    }
+                }];
+                return;
+            }
+            
             // History visibility
             MXRoomHistoryVisibility visibility = updatedItemsDict[kRoomSettingsHistoryVisibilityKey];
             if (visibility)
@@ -2531,6 +2612,50 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
         
         cell = historyVisibilityCell;
     }
+    else if (section == SECTION_TAG_DISAPPEARING_MESSAGES)
+    {
+        NSNumber *pendingSeconds = updatedItemsDict[kRoomSettingsDisappearingMessagesKey];
+        NSNumber *currentSeconds = [mxRoomState vc_maxLifetimeSeconds];
+        if (pendingSeconds != nil)
+        {
+            currentSeconds = pendingSeconds;
+        }
+        else
+        {
+            NSNumber *localSeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:mxRoom.roomId];
+            if (localSeconds != nil)
+            {
+                currentSeconds = localSeconds;
+            }
+        }
+        
+        TableViewCellWithCheckBoxAndLabel *disappearingCell = [tableView dequeueReusableCellWithIdentifier:[TableViewCellWithCheckBoxAndLabel defaultReuseIdentifier] forIndexPath:indexPath];
+        disappearingCell.label.lineBreakMode = NSLineBreakByTruncatingMiddle;
+        NSInteger secondsForRow = 0;
+        switch (row)
+        {
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessagesOff];
+                secondsForRow = 0;
+                break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Day];
+                secondsForRow = 24 * 60 * 60;
+                break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages7Days];
+                secondsForRow = 7 * 24 * 60 * 60;
+                break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages30Days];
+                secondsForRow = 30 * 24 * 60 * 60;
+                break;
+            default:
+                break;
+        }
+        disappearingCell.enabled = (currentSeconds != nil && currentSeconds.integerValue == secondsForRow) || (currentSeconds == nil && secondsForRow == 0);
+        cell = disappearingCell;
+    }
     else if (section == SECTION_TAG_ADDRESSES)
     {
         if (row == ROOM_SETTINGS_ROOM_ADDRESS_NEW_ALIAS)
@@ -2927,6 +3052,34 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                     // Prompt the user before taking into account the change
                     [self shouldChangeHistoryVisibility:historyVisibility];
                 }
+            }
+        }
+        else if (section == SECTION_TAG_DISAPPEARING_MESSAGES)
+        {
+            TableViewCellWithCheckBoxAndLabel *selectedCell = [self.tableView cellForRowAtIndexPath:indexPath];
+            if (!selectedCell.isEnabled)
+            {
+                NSNumber *seconds = nil;
+                switch (row)
+                {
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF:
+                        seconds = @0;
+                        break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
+                        seconds = @(24 * 60 * 60);
+                        break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
+                        seconds = @(7 * 24 * 60 * 60);
+                        break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS:
+                        seconds = @(30 * 24 * 60 * 60);
+                        break;
+                    default:
+                        break;
+                }
+                updatedItemsDict[kRoomSettingsDisappearingMessagesKey] = seconds;
+                [self getNavigationItem].rightBarButtonItem.enabled = (updatedItemsDict.count != 0);
+                [self updateSections];
             }
         }
         else if (section == SECTION_TAG_ADDRESSES)
