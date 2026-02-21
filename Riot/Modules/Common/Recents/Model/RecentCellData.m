@@ -10,10 +10,31 @@ Please see LICENSE in the repository root for full details.
 #import "RecentCellData.h"
 
 #import "MXRoom+Riot.h"
+#import "MXRoomState+Retention.h"
 
 #import "GeneratedInterface-Swift.h"
 
 @implementation RecentCellData
+
+- (BOOL)isLastMessageExpiredByRetention
+{
+    if (self.isSuggestedRoom || !self.roomSummary.lastMessage) { return NO; }
+    
+    NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomSummary.roomId];
+    if (policySeconds == nil)
+    {
+        MXRoom *room = [self.mxSession roomWithRoomId:self.roomSummary.roomId];
+        policySeconds = [room.dangerousSyncState vc_maxLifetimeSeconds];
+    }
+    if (policySeconds == nil || policySeconds.integerValue <= 0) { return NO; }
+    
+    NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomSummary.roomId];
+    NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
+    NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
+    uint64_t ts = self.roomSummary.lastMessage.originServerTs;
+    
+    return (ts >= (uint64_t)startTs && ts < (uint64_t)cutoff);
+}
 
 //  Adds K handling to super implementation
 - (NSString*)notificationCountStringValue
@@ -57,6 +78,25 @@ Please see LICENSE in the repository root for full details.
         result = [VectorL10n roomDisplaynameEmptyRoom];
     }
     return result;
+}
+
+// Hide last message when expired by room retention (disappearing messages)
+- (NSString *)lastEventTextMessage
+{
+    if ([self isLastMessageExpiredByRetention])
+    {
+        return @"";
+    }
+    return [super lastEventTextMessage];
+}
+
+- (NSAttributedString *)lastEventAttributedTextMessage
+{
+    if ([self isLastMessageExpiredByRetention])
+    {
+        return nil;
+    }
+    return [super lastEventAttributedTextMessage];
 }
 
 @end

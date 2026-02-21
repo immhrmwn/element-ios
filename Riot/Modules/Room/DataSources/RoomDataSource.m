@@ -18,6 +18,8 @@ Please see LICENSE in the repository root for full details.
 #import "GeneratedInterface-Swift.h"
 
 #import "MXRoom+Riot.h"
+#import "MXRoomState+Retention.h"
+#import <MatrixSDK/MXEvent.h>
 
 const CGFloat kTypingCellHeight = 24;
 
@@ -164,24 +166,15 @@ const CGFloat kTypingCellHeight = 24;
 
 - (void)setDelegate:(id<MXKDataSourceDelegate>)delegate
 {
-    [self unregisterRoomSummaryDidRemoveExpiredDataFromStoreNotifications];
     [self removeRoomRetentionEventListener];
 
     if (delegate && self.isLive)
     {
         if (self.room)
         {
-            // Remove the potential expired messages from the store
-            if ([self.room.summary removeExpiredRoomContentsFromStore])
-            {
-                [self.mxSession.store commit];
-            }
             [self addRoomRetentionEventListener];
+            [self removeExpiredBubblesIfNeeded];
         }
-
-        // Observe room history flush (expired content data)
-        [self registerRoomSummaryDidRemoveExpiredDataFromStoreNotifications];
-        [self roomSummaryDidRemoveExpiredDataFromStore];
     }
 
     [super setDelegate:delegate];
@@ -189,6 +182,7 @@ const CGFloat kTypingCellHeight = 24;
 
 - (void)destroy
 {
+    [self removeRoomRetentionEventListener];
     if (kThemeServiceDidChangeThemeNotificationObserver)
     {
         [[NSNotificationCenter defaultCenter] removeObserver:kThemeServiceDidChangeThemeNotificationObserver];
@@ -216,9 +210,6 @@ const CGFloat kTypingCellHeight = 24;
     {
         [self.mxSession.aggregations.beaconAggregations removeListener:self.beaconInfoSummaryDeletionListener];
     }
-    
-    [self unregisterRoomSummaryDidRemoveExpiredDataFromStoreNotifications];
-    [self removeRoomRetentionEventListener];
     
     [super destroy];
 }
@@ -289,6 +280,26 @@ const CGFloat kTypingCellHeight = 24;
 
 - (BOOL)shouldQueueEventForProcessing:(MXEvent *)event roomState:(MXRoomState *)roomState direction:(MXTimelineDirection)direction
 {
+    // Filter expired messages when room has disappearing messages (retention) enabled
+    if (!event.isState)
+    {
+        NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
+        if (policySeconds == nil && roomState)
+        {
+            policySeconds = [roomState vc_maxLifetimeSeconds];
+        }
+        if (policySeconds != nil && policySeconds.integerValue > 0)
+        {
+            NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
+            NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
+            NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
+            if (event.originServerTs >= startTs && event.originServerTs < cutoff)
+            {
+                return NO;
+            }
+        }
+    }
+    
     if (self.threadId)
     {
         //  if in a thread, ignore non-root event or events from other threads
@@ -1265,70 +1276,61 @@ const CGFloat kTypingCellHeight = 24;
     }
 }
 
-#pragma mark - roomSummaryDidRemoveExpiredDataFromStore notifications
-
-- (void)registerRoomSummaryDidRemoveExpiredDataFromStoreNotifications
-{
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(roomSummaryDidRemoveExpiredDataFromStore:) name:MXRoomSummary.roomSummaryDidRemoveExpiredDataFromStore object:nil];
-}
-
-- (void)unregisterRoomSummaryDidRemoveExpiredDataFromStoreNotifications
-{
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:MXRoomSummary.roomSummaryDidRemoveExpiredDataFromStore object:nil];
-}
-
-- (void)roomSummaryDidRemoveExpiredDataFromStore:(NSNotification*)notification
-{
-    MXRoomSummary *roomSummary = notification.object;
-    if (self.mxSession == roomSummary.mxSession && [self.roomId isEqualToString:roomSummary.roomId])
-    {
-        [self roomSummaryDidRemoveExpiredDataFromStore];
-    }
-}
-
-- (void)roomSummaryDidRemoveExpiredDataFromStore
-{
-    // Check whether the first cell data refers to an expired event (this may be a state event
-    MXEvent *firstMessageEvent;
-    for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
-    {
-        for (MXEvent *event in cellData.events)
-        {
-            if (!event.isState) {
-                firstMessageEvent = event;
-                break;
-            }
-        }
-
-        if (firstMessageEvent)
-        {
-            break;
-        }
-    }
-
-    if (firstMessageEvent && firstMessageEvent.originServerTs < self.room.summary.minimumTimestamp)
-    {
-        [self reload];
-    }
-}
-
 #pragma mark - room retention event listener
 
 - (void)addRoomRetentionEventListener
 {
-    // Register a listener to handle the room retention in live timelines
-    retentionListener = [self.timeline listenToEventsOfTypes:@[MXRoomSummary.roomRetentionStateEventType] onEvent:^(MXEvent *redactionEvent, MXTimelineDirection direction, MXRoomState *roomState) {
-
-        // Consider only live events
-        if (direction == MXTimelineDirectionForwards)
+    retentionListener = [self.timeline listenToEventsOfTypes:@[kMXEventTypeStringRoomRetention] onEvent:^(MXEvent *event, MXTimelineDirection direction, MXRoomState *roomState) {
+        if (direction == MXTimelineDirectionForwards && roomState)
         {
-            // Remove the potential expired messages from the store
-            if ([self.room.summary removeExpiredRoomContentsFromStore])
+            NSNumber *seconds = [roomState vc_maxLifetimeSeconds];
+            if (seconds != nil && seconds.integerValue > 0)
             {
-                [self.mxSession.store commit];
+                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId];
+                if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
+                {
+                    [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+                }
             }
+            else
+            {
+                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:nil forRoomId:self.roomId];
+                [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
+            }
+            [self removeExpiredBubblesIfNeeded];
         }
     }];
+}
+
+- (void)removeExpiredBubblesIfNeeded
+{
+    NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
+    if (policySeconds == nil || policySeconds.integerValue <= 0) { return; }
+    
+    NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
+    NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
+    NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
+    
+    BOOL hasExpired = NO;
+    @synchronized(bubbles)
+    {
+        for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
+        {
+            for (MXEvent *event in cellData.events)
+            {
+                if (!event.isState && event.originServerTs >= startTs && event.originServerTs < cutoff)
+                {
+                    hasExpired = YES;
+                    break;
+                }
+            }
+            if (hasExpired) { break; }
+        }
+    }
+    if (hasExpired)
+    {
+        [self reload];
+    }
 }
 
 - (void)removeRoomRetentionEventListener
