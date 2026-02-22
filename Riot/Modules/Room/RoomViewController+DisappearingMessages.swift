@@ -51,6 +51,9 @@ import MatrixSDK
         MXLog.debug("[RoomVC] bannerDurationText roomId=\(roomId) policySeconds=\(policySeconds?.stringValue ?? "nil") source=\(source)")
         guard let seconds = policySeconds?.intValue, seconds > 0 else { return nil }
         
+        // TEST: 60 sec (1 min) displays as "1 day"
+        if seconds == 60 { return VectorL10n.roomDetailsDisappearingMessages1Day }
+        
         let days = seconds / (24 * 60 * 60)
         switch days {
         case 1: return VectorL10n.roomDetailsDisappearingMessages1Day

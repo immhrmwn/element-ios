@@ -29,6 +29,9 @@ final class RiotSettings: NSObject {
         static let roomRetentionPolicies = "roomRetentionPolicies"
         static let roomRetentionStartTimestamps = "roomRetentionStartTimestamps"
         static let roomRetentionLastLocalChangeTimestamps = "roomRetentionLastLocalChangeTimestamps"
+        static let previousRetentionStartBeforeOff = "previousRetentionStartBeforeOff"
+        static let previousRetentionPolicyBeforeOff = "previousRetentionPolicyBeforeOff"
+        static let retentionOffTimestamps = "retentionOffTimestamps"
         static let defaultRoomRetentionPolicySeconds = "defaultRoomRetentionPolicySeconds"
     }
     
@@ -468,6 +471,15 @@ final class RiotSettings: NSObject {
     
     /// - Parameter fromLocalChange: If true, records timestamp so sync won't overwrite with stale state for a few seconds.
     @objc func setRoomRetentionMaxLifetimeSeconds(_ seconds: NSNumber?, forRoomId roomId: String, fromLocalChange: Bool) {
+        // When switching to Off, save previous retention context so we still expire messages sent under it
+        if seconds == nil || seconds?.intValue == 0 {
+            if let prevPolicy = roomRetentionPolicy(for: roomId), prevPolicy.maxLifetimeSeconds > 0,
+               let prevStart = roomRetentionStartTimestamp(for: roomId) {
+                setPreviousRetentionBeforeOff(startTs: prevStart, policySeconds: prevPolicy.maxLifetimeSeconds, for: roomId)
+            }
+        } else {
+            clearPreviousRetentionBeforeOff(for: roomId)
+        }
         let policy: RoomRetentionPolicy?
         if let seconds = seconds {
             policy = RoomRetentionPolicy(maxLifetimeSeconds: seconds.intValue)
@@ -515,6 +527,58 @@ final class RiotSettings: NSObject {
     @objc func roomRetentionStartTimestamp(forRoomId roomId: String) -> NSNumber? {
         guard let ts = roomRetentionStartTimestamp(for: roomId) else { return nil }
         return NSNumber(value: ts)
+    }
+    
+    // MARK: - Previous retention before Off (for expiring messages sent under old policy)
+    
+    private func setPreviousRetentionBeforeOff(startTs: TimeInterval, policySeconds: Int, for roomID: String) {
+        let offTs = Date().timeIntervalSince1970
+        var startDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionStartBeforeOff).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        var policyDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionPolicyBeforeOff).flatMap { try JSONDecoder().decode([String: Int].self, from: $0) }) ?? [:]
+        var offDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.retentionOffTimestamps).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        startDict[roomID] = startTs
+        policyDict[roomID] = policySeconds
+        offDict[roomID] = offTs
+        if let d = try? JSONEncoder().encode(startDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.previousRetentionStartBeforeOff) }
+        if let d = try? JSONEncoder().encode(policyDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.previousRetentionPolicyBeforeOff) }
+        if let d = try? JSONEncoder().encode(offDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.retentionOffTimestamps) }
+    }
+    
+    private func clearPreviousRetentionBeforeOff(for roomID: String) {
+        var startDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionStartBeforeOff).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        var policyDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionPolicyBeforeOff).flatMap { try JSONDecoder().decode([String: Int].self, from: $0) }) ?? [:]
+        var offDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.retentionOffTimestamps).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        startDict.removeValue(forKey: roomID)
+        policyDict.removeValue(forKey: roomID)
+        offDict.removeValue(forKey: roomID)
+        if let d = try? JSONEncoder().encode(startDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.previousRetentionStartBeforeOff) }
+        if let d = try? JSONEncoder().encode(policyDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.previousRetentionPolicyBeforeOff) }
+        if let d = try? JSONEncoder().encode(offDict) { RiotSettings.defaults.set(d, forKey: UserDefaultsKeys.retentionOffTimestamps) }
+    }
+    
+    @objc func previousRetentionStartBeforeOffForRoomId(_ roomId: String) -> NSNumber? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionStartBeforeOff),
+              let dict = try? JSONDecoder().decode([String: Double].self, from: data),
+              let v = dict[roomId] else { return nil }
+        return NSNumber(value: v)
+    }
+    
+    @objc func previousRetentionPolicyBeforeOffForRoomId(_ roomId: String) -> NSNumber? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.previousRetentionPolicyBeforeOff),
+              let dict = try? JSONDecoder().decode([String: Int].self, from: data),
+              let v = dict[roomId], v > 0 else { return nil }
+        return NSNumber(value: v)
+    }
+    
+    @objc func retentionOffTimestampForRoomId(_ roomId: String) -> NSNumber? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.retentionOffTimestamps),
+              let dict = try? JSONDecoder().decode([String: Double].self, from: data),
+              let v = dict[roomId] else { return nil }
+        return NSNumber(value: v)
+    }
+    
+    @objc func clearPreviousRetentionBeforeOffForRoomId(_ roomId: String) {
+        clearPreviousRetentionBeforeOff(for: roomId)
     }
 }
 

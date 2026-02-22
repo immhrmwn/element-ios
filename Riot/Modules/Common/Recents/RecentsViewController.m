@@ -63,6 +63,8 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
     
     // Cancel handler of any ongoing loading indicator
     UserIndicatorCancel loadingIndicatorCancel;
+    
+    NSTimer *retentionExpiryRefreshTimer;
 }
 
 @property (nonatomic, strong) CreateRoomCoordinatorBridgePresenter *createRoomCoordinatorBridgePresenter;
@@ -300,6 +302,13 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
         [self refreshRecentsTable];
         
     }];
+    
+    // Periodically refresh so expired retention messages disappear from room list
+    [retentionExpiryRefreshTimer invalidate];
+    retentionExpiryRefreshTimer = [NSTimer scheduledTimerWithTimeInterval:5.0 repeats:YES block:^(NSTimer * _Nonnull timer) {
+        MXStrongifyAndReturnIfNil(self);
+        if (self->isViewVisible) { [self refreshRecentsTable]; }
+    }];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -321,6 +330,9 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
         [[NSNotificationCenter defaultCenter] removeObserver:kMXNotificationCenterDidUpdateRulesObserver];
         kMXNotificationCenterDidUpdateRulesObserver = nil;
     }
+    
+    [retentionExpiryRefreshTimer invalidate];
+    retentionExpiryRefreshTimer = nil;
     
     [self stopActivityIndicator];
 }

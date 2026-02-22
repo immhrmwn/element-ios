@@ -1693,8 +1693,17 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
             if (disappearingSeconds != nil)
             {
                 MXLogDebug(@"[RoomSettings] Retention SAVE START roomId=%@ seconds=%@ (0=off) hasStored=%@", mxRoom.roomId, disappearingSeconds, @([RiotSettings.shared hasRoomRetentionStoredValueForRoomId:mxRoom.roomId]));
-                long long maxLifetimeMs = disappearingSeconds.longLongValue * 1000;
-                NSDictionary *content = @{ @"max_lifetime": @(maxLifetimeMs) };
+                NSDictionary *content;
+                if (disappearingSeconds.integerValue > 0)
+                {
+                    long long maxLifetimeMs = disappearingSeconds.longLongValue * 1000;
+                    content = @{ @"max_lifetime": @(maxLifetimeMs) };
+                }
+                else
+                {
+                    // Off: send empty content per MSC1763. max_lifetime:0 means "expire immediately" in Synapse!
+                    content = @{};
+                }
                 NSNumber *secondsToStore = disappearingSeconds;
                 NSNumber *previousSeconds = [mxRoomState vc_maxLifetimeSeconds];
                 [self->updatedItemsDict removeObjectForKey:kRoomSettingsDisappearingMessagesKey];
@@ -2673,7 +2682,7 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                 break;
             case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
                 disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Day];
-                secondsForRow = 24 * 60 * 60;
+                secondsForRow = 60; // TEST: 1 min (production: 24 * 60 * 60)
                 break;
             case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
                 disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages7Days];
@@ -3099,7 +3108,7 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                         seconds = @0;
                         break;
                     case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
-                        seconds = @(24 * 60 * 60);
+                        seconds = @60; // TEST: 1 min (production: 24 * 60 * 60)
                         break;
                     case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
                         seconds = @(7 * 24 * 60 * 60);

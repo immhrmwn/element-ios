@@ -31,9 +31,9 @@ Please see LICENSE in the repository root for full details.
     NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomSummary.roomId];
     NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
     NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
-    uint64_t ts = self.roomSummary.lastMessage.originServerTs;
+    NSTimeInterval tsSec = self.roomSummary.lastMessage.originServerTs / 1000.0;  // originServerTs is ms
     
-    return (ts >= (uint64_t)startTs && ts < (uint64_t)cutoff);
+    return (tsSec >= startTs && tsSec < cutoff);
 }
 
 //  Adds K handling to super implementation

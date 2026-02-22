@@ -1203,7 +1203,7 @@ NSString *const kRecentsDataSourceTapOnDirectoryServerChange = @"kRecentsDataSou
 
     if (summary)
     {
-        return [[MXKRecentCellData alloc] initWithRoomSummary:summary dataSource:self];
+        return [[RecentCellData alloc] initWithRoomSummary:summary dataSource:self];
     }
     return nil;
 }
