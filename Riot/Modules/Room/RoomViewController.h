@@ -24,6 +24,7 @@ Please see LICENSE in the repository root for full details.
 @protocol RoomViewControllerDelegate;
 @class RoomDisplayConfiguration;
 @class ThreadsCoordinatorBridgePresenter;
+@class DisappearingMessagesBannerView;
 @class LiveLocationSharingBannerView;
 @class VoiceBroadcastService;
 @class ComposerLinkActionBridgePresenter;
@@ -102,6 +103,9 @@ extern NSTimeInterval const kResizeComposerAnimationDuration;
 
 /// Displayed live location sharing banner if any
 @property (nonatomic, weak) LiveLocationSharingBannerView *liveLocationSharingBannerView;
+
+/// Displayed disappearing messages banner if any
+@property (nonatomic, weak) DisappearingMessagesBannerView *disappearingMessagesBannerView;
 
 // The customized room data source for Vector
 @property (nonatomic, nullable) RoomDataSource *customizedRoomDataSource;

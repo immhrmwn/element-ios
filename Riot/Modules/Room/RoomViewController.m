@@ -165,6 +165,9 @@ static CGSize kThreadListBarButtonItemImageSize;
     // Observe URL preview updates to refresh cells.
     __weak id URLPreviewDidUpdateNotificationObserver;
     
+    // Observe room retention (disappearing messages) updates to refresh banner.
+    __weak id roomRetentionDidUpdateObserver;
+    
     // Listener for `m.room.tombstone` event type
     __weak id tombstoneEventNotificationsListener;
 
@@ -410,6 +413,19 @@ static CGSize kThreadListBarButtonItemImageSize;
     [self setupCompletionSuggestionViewIfNeeded];
     
     [self.topBannersStackView vc_removeAllSubviews];
+    
+    // Observe room retention updates (from Room Settings save or sync)
+    roomRetentionDidUpdateObserver = [[NSNotificationCenter defaultCenter] addObserverForName:RiotSettings.didUpdateRoomRetention object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *notif) {
+        MXStrongifyAndReturnIfNil(self);
+        NSString *notifRoomId = notif.userInfo[@"roomId"];
+        NSString *myRoomId = self.roomDataSource.roomId;
+        MXLogDebug(@"[RoomVC] Retention NOTIFICATION notifRoomId=%@ myRoomId=%@ match=%d", notifRoomId, myRoomId, [notifRoomId isKindOfClass:NSString.class] && myRoomId && [notifRoomId isEqualToString:myRoomId]);
+        if (!myRoomId) { return; }
+        if ([notifRoomId isKindOfClass:NSString.class] && [notifRoomId isEqualToString:myRoomId])
+        {
+            [self updateDisappearingMessagesBannerViewVisibility];
+        }
+    }];
 }
 
 - (void)userInterfaceThemeDidChange
@@ -494,6 +510,7 @@ static CGSize kThreadListBarButtonItemImageSize;
     [self updateThreadListBarButtonBadgeWith:self.mainSession.threadingService];
     
     [self.liveLocationSharingBannerView updateWithTheme:ThemeService.shared.theme];
+    [self.disappearingMessagesBannerView updateWithTheme:ThemeService.shared.theme];
     
     [self setNeedsStatusBarAppearanceUpdate];
 }
@@ -1517,6 +1534,11 @@ static CGSize kThreadListBarButtonItemImageSize;
     if (URLPreviewDidUpdateNotificationObserver)
     {
         [NSNotificationCenter.defaultCenter removeObserver:URLPreviewDidUpdateNotificationObserver];        
+    }
+    if (roomRetentionDidUpdateObserver)
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:roomRetentionDidUpdateObserver];
+        roomRetentionDidUpdateObserver = nil;
     }
     
     [self removeCallNotificationsListeners];
@@ -2740,9 +2762,11 @@ static CGSize kThreadListBarButtonItemImageSize;
 
 - (void)updateTopBanners
 {
+    MXLogDebug(@"[RoomVC] updateTopBanners roomId=%@", self.roomDataSource.roomId);
     [self.view bringSubviewToFront:self.topBannersStackView];
     
     [self updateLiveLocationBannerViewVisibility];
+    [self updateDisappearingMessagesBannerViewVisibility];
 }
 
 - (void)showEmojiPickerForEventId:(NSString *)eventId
@@ -4853,6 +4877,12 @@ static CGSize kThreadListBarButtonItemImageSize;
 - (void)roomDataSourceDidUpdateCurrentUserSharingLocationStatus:(RoomDataSource *)roomDataSource
 {
     [self updateLiveLocationBannerViewVisibility];
+}
+
+- (void)roomDataSourceDidUpdateRoomRetention:(RoomDataSource *)roomDataSource
+{
+    MXLogDebug(@"[RoomVC] roomDataSourceDidUpdateRoomRetention roomId=%@", roomDataSource.roomId);
+    [self updateDisappearingMessagesBannerViewVisibility];
 }
 
 #pragma mark - Segues

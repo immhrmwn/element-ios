@@ -130,4 +130,7 @@ Please see LICENSE in the repository root for full details.
 /// Called when current live location sharing status is changing (start or stop location sharing in the room)
 - (void)roomDataSourceDidUpdateCurrentUserSharingLocationStatus:(RoomDataSource * _Nonnull)roomDataSource;
 
+/// Called when room retention (disappearing messages) policy is updated.
+- (void)roomDataSourceDidUpdateRoomRetention:(RoomDataSource * _Nonnull)roomDataSource;
+
 @end

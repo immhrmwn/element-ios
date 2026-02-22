@@ -19,6 +19,7 @@ Please see LICENSE in the repository root for full details.
 
 #import "MXRoom+Riot.h"
 #import "MXRoomState+Retention.h"
+#import "MXLog.h"
 #import <MatrixSDK/MXEvent.h>
 
 const CGFloat kTypingCellHeight = 24;
@@ -1281,9 +1282,16 @@ const CGFloat kTypingCellHeight = 24;
 - (void)addRoomRetentionEventListener
 {
     retentionListener = [self.timeline listenToEventsOfTypes:@[kMXEventTypeStringRoomRetention] onEvent:^(MXEvent *event, MXTimelineDirection direction, MXRoomState *roomState) {
+        MXLogDebug(@"[RoomDataSource] Retention EVENT roomId=%@ direction=%ld", self.roomId, (long)direction);
         if (direction == MXTimelineDirectionForwards && roomState)
         {
+            if ([RiotSettings.shared hasRecentLocalRetentionChangeForRoomId:self.roomId])
+            {
+                MXLogDebug(@"[RoomDataSource] Retention EVENT skipped (recent local change) roomId=%@", self.roomId);
+                return;
+            }
             NSNumber *seconds = [roomState vc_maxLifetimeSeconds];
+            MXLogDebug(@"[RoomDataSource] Retention EVENT processing seconds=%@", seconds);
             if (seconds != nil && seconds.integerValue > 0)
             {
                 [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId];
@@ -1294,10 +1302,16 @@ const CGFloat kTypingCellHeight = 24;
             }
             else
             {
-                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:nil forRoomId:self.roomId];
+                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self.roomId];
                 [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
             }
             [self removeExpiredBubblesIfNeeded];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if ([self.roomDataSourceDelegate respondsToSelector:@selector(roomDataSourceDidUpdateRoomRetention:)])
+                {
+                    [self.roomDataSourceDelegate roomDataSourceDidUpdateRoomRetention:self];
+                }
+            });
         }
     }];
 }

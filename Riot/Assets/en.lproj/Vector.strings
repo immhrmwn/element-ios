@@ -1064,6 +1064,8 @@ Tap the + to start adding people.";
 "room_details_disappearing_messages_1_day" = "1 day";
 "room_details_disappearing_messages_7_days" = "7 days";
 "room_details_disappearing_messages_30_days" = "30 days";
+"room_disappearing_messages_banner" = "Messages in this room disappear after %@";
+"room_disappearing_messages_duration_days" = "%d days";
 "room_details_addresses_section"="Addresses";
 "room_details_no_local_addresses" = "This room has no local addresses";
 "room_details_no_local_addresses_for_dm" = "This has no local addresses";

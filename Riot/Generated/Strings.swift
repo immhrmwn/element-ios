@@ -5755,6 +5755,14 @@ public class VectorL10n: NSObject {
   public static var roomDirectoryNoPublicRoom: String { 
     return VectorL10n.tr("Vector", "room_directory_no_public_room") 
   }
+  /// Messages in this room disappear after %@
+  public static func roomDisappearingMessagesBanner(_ p1: String) -> String {
+    return VectorL10n.tr("Vector", "room_disappearing_messages_banner", p1)
+  }
+  /// %d days
+  public static func roomDisappearingMessagesDurationDays(_ p1: Int) -> String {
+    return VectorL10n.tr("Vector", "room_disappearing_messages_duration_days", p1)
+  }
   /// %@ (Left)
   public static func roomDisplaynameAllOtherMembersLeft(_ p1: String) -> String {
     return VectorL10n.tr("Vector", "room_displayname_all_other_members_left", p1)

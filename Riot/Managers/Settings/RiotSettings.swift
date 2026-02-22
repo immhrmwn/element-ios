@@ -6,6 +6,7 @@ Please see LICENSE in the repository root for full details.
  */
 
 import Foundation
+import MatrixSDK
 
 /// Store Riot specific app settings.
 @objcMembers
@@ -27,6 +28,7 @@ final class RiotSettings: NSObject {
         // Disappearing messages (room retention)
         static let roomRetentionPolicies = "roomRetentionPolicies"
         static let roomRetentionStartTimestamps = "roomRetentionStartTimestamps"
+        static let roomRetentionLastLocalChangeTimestamps = "roomRetentionLastLocalChangeTimestamps"
         static let defaultRoomRetentionPolicySeconds = "defaultRoomRetentionPolicySeconds"
     }
     
@@ -414,13 +416,20 @@ final class RiotSettings: NSObject {
         }
     }
     
+    /// Returns true if we have a stored value for this room (including explicit "off" = 0).
+    func hasRoomRetentionStoredValue(for roomID: String) -> Bool {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies),
+              let dict = try? JSONDecoder().decode([String: Int].self, from: data) else { return false }
+        return dict[roomID] != nil
+    }
+
     func roomRetentionPolicy(for roomID: String) -> RoomRetentionPolicy? {
         guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies),
               let dict = try? JSONDecoder().decode([String: Int].self, from: data),
               let seconds = dict[roomID] else { return nil }
         return RoomRetentionPolicy(maxLifetimeSeconds: seconds)
     }
-    
+
     func setRoomRetentionPolicy(_ policy: RoomRetentionPolicy?, for roomID: String) {
         var dict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies).flatMap { try JSONDecoder().decode([String: Int].self, from: $0) }) ?? [:]
         if let policy = policy {
@@ -454,13 +463,49 @@ final class RiotSettings: NSObject {
     // MARK: - Obj-C bridge for room retention
     
     @objc func setRoomRetentionMaxLifetimeSeconds(_ seconds: NSNumber?, forRoomId roomId: String) {
-        let policy: RoomRetentionPolicy? = seconds.map { RoomRetentionPolicy(maxLifetimeSeconds: $0.intValue) }
-        setRoomRetentionPolicy(policy, for: roomId)
+        setRoomRetentionMaxLifetimeSeconds(seconds, forRoomId: roomId, fromLocalChange: false)
     }
     
+    /// - Parameter fromLocalChange: If true, records timestamp so sync won't overwrite with stale state for a few seconds.
+    @objc func setRoomRetentionMaxLifetimeSeconds(_ seconds: NSNumber?, forRoomId roomId: String, fromLocalChange: Bool) {
+        let policy: RoomRetentionPolicy?
+        if let seconds = seconds {
+            policy = RoomRetentionPolicy(maxLifetimeSeconds: seconds.intValue)
+        } else {
+            policy = nil
+        }
+        MXLog.debug("[RiotSettings] setRoomRetention roomId=\(roomId) seconds=\(seconds?.stringValue ?? "nil") -> stored=\(policy.map { "\($0.maxLifetimeSeconds)" } ?? "nil") fromLocal=\(fromLocalChange)")
+        setRoomRetentionPolicy(policy, for: roomId)
+        if fromLocalChange {
+            setRoomRetentionLastLocalChangeTimestamp(Date().timeIntervalSince1970, for: roomId)
+        }
+        NotificationCenter.default.post(name: RiotSettings.didUpdateRoomRetention, object: nil, userInfo: ["roomId": roomId])
+    }
+    
+    private func setRoomRetentionLastLocalChangeTimestamp(_ timestamp: TimeInterval, for roomID: String) {
+        var dict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionLastLocalChangeTimestamps).flatMap { try JSONDecoder().decode([String: Double].self, from: $0) }) ?? [:]
+        dict[roomID] = timestamp
+        if let data = try? JSONEncoder().encode(dict) {
+            RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.roomRetentionLastLocalChangeTimestamps)
+        }
+    }
+    
+    /// True if we set retention from Room Settings recently (within 5s), so sync should not overwrite.
+    @objc func hasRecentLocalRetentionChangeForRoomId(_ roomId: String) -> Bool {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionLastLocalChangeTimestamps),
+              let dict = try? JSONDecoder().decode([String: Double].self, from: data),
+              let ts = dict[roomId] else { return false }
+        return (Date().timeIntervalSince1970 - ts) < 5.0
+    }
+
     @objc func roomRetentionMaxLifetimeSeconds(forRoomId roomId: String) -> NSNumber? {
         guard let policy = roomRetentionPolicy(for: roomId) else { return nil }
-        return NSNumber(value: policy.maxLifetimeSeconds)
+        let seconds = policy.maxLifetimeSeconds
+        return NSNumber(value: seconds)
+    }
+
+    @objc func hasRoomRetentionStoredValueForRoomId(_ roomId: String) -> Bool {
+        return hasRoomRetentionStoredValue(for: roomId)
     }
     
     @objc func setRoomRetentionStartTimestamp(_ timestamp: NSNumber?, forRoomId roomId: String) {
@@ -476,4 +521,6 @@ final class RiotSettings: NSObject {
 // MARK: - RiotSettings notification constants
 extension RiotSettings {
     public static let didUpdateLiveLocationSharingActivation = Notification.Name("RiotSettingsDidUpdateLiveLocationSharingActivation")
+    /// Posted when room retention (disappearing messages) is updated. userInfo["roomId"] = String.
+    public static let didUpdateRoomRetention = Notification.Name("RiotSettingsDidUpdateRoomRetention")
 }
