@@ -12,6 +12,7 @@ Please see LICENSE in the repository root for full details.
 #import "AvatarGenerator.h"
 #import "MatrixKit.h"
 #import "GeneratedInterface-Swift.h"
+#import <MatrixSDK/MXEvent.h>
 #import <objc/runtime.h>
 
 @implementation MXRoom (Riot)
@@ -369,6 +370,28 @@ Please see LICENSE in the repository root for full details.
     {
         onComplete(UserEncryptionTrustLevelNone);
     }
+}
+
+#pragma mark - Default retention policy
+
+- (void)vc_applyDefaultRetentionPolicyIfNeededWithCompletion:(void (^)(void))completion
+{
+    NSNumber *seconds = [RiotSettings.shared defaultRoomRetentionPolicySeconds];
+    if (!seconds || seconds.integerValue <= 0)
+    {
+        if (completion) { completion(); }
+        return;
+    }
+    NSDictionary *content = @{ @"max_lifetime": @(seconds.longLongValue * 1000) };
+    [self sendStateEventOfType:kMXEventTypeStringRoomRetention content:content stateKey:@"" success:^(NSString *eventId) {
+        MXLogDebug(@"[MXRoom+Riot] Applied default retention policy to new room %@", self.roomId);
+        [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId fromLocalChange:YES];
+        [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+        if (completion) { completion(); }
+    } failure:^(NSError *error) {
+        MXLogDebug(@"[MXRoom+Riot] Failed to apply default retention to room %@: %@", self.roomId, error);
+        if (completion) { completion(); }
+    }];
 }
 
 #pragma mark -

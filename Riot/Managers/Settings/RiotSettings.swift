@@ -419,6 +419,21 @@ final class RiotSettings: NSObject {
         }
     }
     
+    /// Obj-C bridge: Default retention in seconds for new rooms. nil or 0 = off.
+    @objc func defaultRoomRetentionPolicySeconds() -> NSNumber? {
+        guard let policy = defaultRoomRetentionPolicy, policy.maxLifetimeSeconds > 0 else { return nil }
+        return NSNumber(value: policy.maxLifetimeSeconds)
+    }
+    
+    /// Obj-C bridge: Set default retention. Pass nil or 0 for off.
+    @objc func setDefaultRoomRetentionPolicySeconds(_ seconds: NSNumber?) {
+        if let sec = seconds, sec.intValue > 0 {
+            defaultRoomRetentionPolicy = RoomRetentionPolicy(maxLifetimeSeconds: sec.intValue)
+        } else {
+            defaultRoomRetentionPolicy = nil
+        }
+    }
+    
     /// Returns true if we have a stored value for this room (including explicit "off" = 0).
     func hasRoomRetentionStoredValue(for roomID: String) -> Bool {
         guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies),

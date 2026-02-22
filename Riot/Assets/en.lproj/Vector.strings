@@ -732,6 +732,8 @@ Tap the + to start adding people.";
 "settings_contacts" = "DEVICE CONTACTS";
 "settings_phone_contacts" = "PHONE CONTACTS";
 "settings_advanced" = "ADVANCED";
+"settings_default_disappearing_messages" = "Default disappearing messages";
+"settings_default_disappearing_messages_footer" = "New rooms you create will have this disappearing messages setting applied by default.";
 "settings_about" = "ABOUT";
 "settings_labs" = "LABS";
 "settings_flair" = "Show flair where allowed";

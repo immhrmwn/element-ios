@@ -10,6 +10,7 @@ Please see LICENSE in the repository root for full details.
 #import "ContactDetailsViewController.h"
 
 #import "GeneratedInterface-Swift.h"
+#import "MXRoom+Riot.h"
 #import "MXSession+Riot.h"
 
 #import "RoomMemberTitleView.h"
@@ -1044,6 +1045,8 @@ Please see LICENSE in the repository root for full details.
 
                             self->roomCreationRequest = nil;
 
+                            [room vc_applyDefaultRetentionPolicyIfNeededWithCompletion:nil];
+
                             [self removePendingActionMask];
                             
                             Analytics.shared.viewRoomTrigger = AnalyticsViewRoomTriggerCreated;
@@ -1078,6 +1081,8 @@ Please see LICENSE in the repository root for full details.
                     roomCreationRequest = [self.mainSession createRoomWithParameters:roomCreationParameters success:^(MXRoom *room) {
 
                         self->roomCreationRequest = nil;
+
+                        [room vc_applyDefaultRetentionPolicyIfNeededWithCompletion:nil];
 
                         // Delay the call in order to be sure that the room is ready
                         dispatch_async(dispatch_get_main_queue(), ^{

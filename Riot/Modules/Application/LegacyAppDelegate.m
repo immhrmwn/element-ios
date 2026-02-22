@@ -2976,6 +2976,9 @@ NSString *const AppDelegateUniversalLinkDidChangeNotification = @"AppDelegateUni
                     // Room is created
                     Analytics.shared.viewRoomTrigger = AnalyticsViewRoomTriggerCreated;
 
+                    // Apply default disappearing messages if set
+                    [room vc_applyDefaultRetentionPolicyIfNeededWithCompletion:nil];
+
                     if (completion)
                     {
                         completion(room.roomId);

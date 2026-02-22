@@ -143,6 +143,7 @@ typedef NS_ENUM(NSUInteger, ADVANCED)
 {
     ADVANCED_CRASH_REPORT_INDEX = 0,
     ADVANCED_ENABLE_RAGESHAKE_INDEX,
+    ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX,
     ADVANCED_MARK_ALL_AS_READ_INDEX,
     ADVANCED_CLEAR_CACHE_INDEX,
     ADVANCED_REPORT_BUG_INDEX,
@@ -563,6 +564,7 @@ SSOAuthenticationPresenterDelegate>
     {
         [sectionAdvanced addRowWithTag:ADVANCED_ENABLE_RAGESHAKE_INDEX];
     }
+    [sectionAdvanced addRowWithTag:ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX];
     [sectionAdvanced addRowWithTag:ADVANCED_MARK_ALL_AS_READ_INDEX];
     [sectionAdvanced addRowWithTag:ADVANCED_CLEAR_CACHE_INDEX];
     if (BuildSettings.settingsScreenAllowBugReportingManually)
@@ -2379,6 +2381,22 @@ SSOAuthenticationPresenterDelegate>
 
             cell = enableRageShakeCell;
         }
+        else if (row == ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX)
+        {
+            NSString *reuseId = @"SettingsDefaultDisappearingMessages";
+            UITableViewCell *defaultDisappearingCell = [tableView dequeueReusableCellWithIdentifier:reuseId];
+            if (!defaultDisappearingCell)
+            {
+                defaultDisappearingCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:reuseId];
+            }
+            defaultDisappearingCell.textLabel.text = [VectorL10n settingsDefaultDisappearingMessages];
+            defaultDisappearingCell.detailTextLabel.text = [self defaultDisappearingMessagesDetailText];
+            defaultDisappearingCell.textLabel.textColor = ThemeService.shared.theme.textPrimaryColor;
+            defaultDisappearingCell.detailTextLabel.textColor = ThemeService.shared.theme.textSecondaryColor;
+            [defaultDisappearingCell vc_setAccessoryDisclosureIndicatorWithCurrentTheme];
+            defaultDisappearingCell.selectionStyle = UITableViewCellSelectionStyleDefault;
+            cell = defaultDisappearingCell;
+        }
         else if (row == ADVANCED_MARK_ALL_AS_READ_INDEX)
         {
             MXKTableViewCellWithButton *markAllBtnCell = [tableView dequeueReusableCellWithIdentifier:[MXKTableViewCellWithButton defaultReuseIdentifier]];
@@ -2864,6 +2882,10 @@ SSOAuthenticationPresenterDelegate>
                 [self presentViewController:unignorePrompt animated:YES completion:nil];
                 currentAlert = unignorePrompt;
             }
+        }
+        else if (section == SECTION_TAG_ADVANCED && row == ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX)
+        {
+            [self showDefaultDisappearingMessagesPicker];
         }
         else if (section == SECTION_TAG_ABOUT)
         {
@@ -3911,6 +3933,56 @@ SSOAuthenticationPresenterDelegate>
         
         [presenter presentForIdentityProvider:nil with:@"" from:self animated:YES];
     }
+}
+
+- (NSString *)defaultDisappearingMessagesDetailText
+{
+    NSNumber *seconds = [RiotSettings.shared defaultRoomRetentionPolicySeconds];
+    if (!seconds || seconds.integerValue <= 0)
+    {
+        return [VectorL10n roomDetailsDisappearingMessagesOff];
+    }
+    NSInteger sec = seconds.integerValue;
+    if (sec == 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages1Day]; }
+    if (sec == 7 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages7Days]; }
+    if (sec == 30 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages30Days]; }
+    return [VectorL10n roomDetailsDisappearingMessagesOff];
+}
+
+- (void)showDefaultDisappearingMessagesPicker
+{
+    __weak typeof(self) weakSelf = self;
+    void (^actionBlock)(NSNumber *) = ^(NSNumber *seconds) {
+        if (weakSelf)
+        {
+            typeof(self) self = weakSelf;
+            [RiotSettings.shared setDefaultRoomRetentionPolicySeconds:seconds];
+            [self updateSections];
+        }
+    };
+    
+    UIAlertController *picker = [UIAlertController alertControllerWithTitle:[VectorL10n settingsDefaultDisappearingMessages]
+                                                                   message:[VectorL10n settingsDefaultDisappearingMessagesFooter]
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessagesOff]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(nil); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Day]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(24 * 60 * 60)); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages7Days]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(7 * 24 * 60 * 60)); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages30Days]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(30 * 24 * 60 * 60)); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n cancel]
+                                               style:UIAlertActionStyleCancel
+                                             handler:nil]];
+    
+    [self presentViewController:picker animated:YES completion:nil];
+    currentAlert = picker;
 }
 
 - (void)showThemePicker

@@ -10,6 +10,7 @@ Please see LICENSE in the repository root for full details.
 #import "StartChatViewController.h"
 
 #import "GeneratedInterface-Swift.h"
+#import "MXRoom+Riot.h"
 #import "MXSession+Riot.h"
 
 @interface StartChatViewController () <UITableViewDataSource, UISearchBarDelegate, ContactsTableViewControllerDelegate, InviteFriendsHeaderViewDelegate>
@@ -768,6 +769,9 @@ Please see LICENSE in the repository root for full details.
 
                     // Update the room summary
                     [room.summary resetRoomStateData];
+
+                    // Apply default disappearing messages if set
+                    [room vc_applyDefaultRetentionPolicyIfNeededWithCompletion:nil];
                     
                     self->roomCreationRequest = nil;
 

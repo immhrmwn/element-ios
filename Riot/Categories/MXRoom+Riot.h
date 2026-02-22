@@ -76,4 +76,12 @@ Please see LICENSE in the repository root for full details.
  */
 - (void)encryptionTrustLevelForUserId:(NSString*)userId onComplete:(void (^)(UserEncryptionTrustLevel userEncryptionTrustLevel))onComplete;
 
+/**
+ Apply the user's default room retention policy to this room, if one is set.
+ Call this after creating a new room to apply the default disappearing messages setting.
+ 
+ @param completion Block called when done (success or failure). May be nil.
+ */
+- (void)vc_applyDefaultRetentionPolicyIfNeededWithCompletion:(void (^)(void))completion;
+
 @end

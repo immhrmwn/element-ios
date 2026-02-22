@@ -155,6 +155,7 @@ final class EnterNewRoomDetailsViewModel: EnterNewRoomDetailsViewModelType {
     }
     
     private func uploadAvatarIfRequired(ofRoom room: MXRoom) {
+        room.vc_applyDefaultRetentionPolicyIfNeeded(completion: nil)
         guard let avatar = roomCreationParameters.userSelectedAvatar else {
             //  no avatar set, continue
             self.coordinatorDelegate?.enterNewRoomDetailsViewModel(self, didCreateNewRoom: room)

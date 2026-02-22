@@ -7507,6 +7507,14 @@ public class VectorL10n: NSObject {
   public static var settingsDefault: String { 
     return VectorL10n.tr("Vector", "settings_default") 
   }
+  /// Default disappearing messages
+  public static var settingsDefaultDisappearingMessages: String { 
+    return VectorL10n.tr("Vector", "settings_default_disappearing_messages") 
+  }
+  /// New rooms you create will have this disappearing messages setting applied by default.
+  public static var settingsDefaultDisappearingMessagesFooter: String { 
+    return VectorL10n.tr("Vector", "settings_default_disappearing_messages_footer") 
+  }
   /// Device notifications
   public static var settingsDeviceNotifications: String { 
     return VectorL10n.tr("Vector", "settings_device_notifications") 
