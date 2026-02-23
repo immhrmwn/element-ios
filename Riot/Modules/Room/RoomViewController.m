@@ -6854,14 +6854,16 @@ static CGSize kThreadListBarButtonItemImageSize;
             }
             else //if ([MXTools isMatrixUserIdentifier:participantId])
             {
-                [room inviteUser:participantId success:^{
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:self.mainSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:participantId homeserverDomain:homeserver] ?: participantId;
+                [room inviteUser:resolvedUserId success:^{
                     
                     // Refresh display by removing the contacts picker
                     [contactsTableViewController withdrawViewControllerAnimated:YES completion:nil];
                     
                 } failure:^(NSError *error) {
                     
-                    MXLogDebug(@"[RoomVC] Invite %@ failed", participantId);
+                    MXLogDebug(@"[RoomVC] Invite %@ failed", resolvedUserId);
                     // Alert user
                     [self showError:error];
                     

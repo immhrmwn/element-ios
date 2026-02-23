@@ -1471,12 +1471,13 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
         {
             if (userId)
             {
-                // Invite the user
-                [roomDataSource.room inviteUser:userId success:^{
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
+                [roomDataSource.room inviteUser:resolvedUserId success:^{
 
                 } failure:^(NSError *error) {
 
-                    MXLogDebug(@"[MXKRoomVC] Invite user (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Invite user (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];
@@ -1493,6 +1494,8 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
         {
             if (userId)
             {
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                 // Retrieve potential reason
                 NSString *reason = nil;
                 while (index < components.count)
@@ -1507,11 +1510,11 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
                     }
                 }
                 // Kick the user
-                [roomDataSource.room kickUser:userId reason:reason success:^{
+                [roomDataSource.room kickUser:resolvedUserId reason:reason success:^{
                     
                 } failure:^(NSError *error) {
                     
-                    MXLogDebug(@"[MXKRoomVC] Kick user (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Kick user (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];
@@ -1528,6 +1531,8 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
         {
             if (userId)
             {
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                 // Retrieve potential reason
                 NSString *reason = nil;
                 while (index < components.count)
@@ -1542,11 +1547,11 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
                     }
                 }
                 // Ban the user
-                [roomDataSource.room banUser:userId reason:reason success:^{
+                [roomDataSource.room banUser:resolvedUserId reason:reason success:^{
                     
                 } failure:^(NSError *error) {
                     
-                    MXLogDebug(@"[MXKRoomVC] Ban user (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Ban user (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];
@@ -1563,12 +1568,14 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
         {
             if (userId)
             {
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                 // Unban the user
-                [roomDataSource.room unbanUser:userId success:^{
+                [roomDataSource.room unbanUser:resolvedUserId success:^{
                     
                 } failure:^(NSError *error) {
                     
-                    MXLogDebug(@"[MXKRoomVC] Unban user (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Unban user (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];
@@ -1599,12 +1606,14 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
             // Set power level
             if (userId && powerLevel)
             {
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                 // Set user power level
-                [roomDataSource.room setPowerLevelOfUserWithUserID:userId powerLevel:[powerLevel integerValue] success:^{
+                [roomDataSource.room setPowerLevelOfUserWithUserID:resolvedUserId powerLevel:[powerLevel integerValue] success:^{
                     
                 } failure:^(NSError *error) {
                     
-                    MXLogDebug(@"[MXKRoomVC] Set user power (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Set user power (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];
@@ -1621,12 +1630,14 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
         {
             if (userId)
             {
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:roomDataSource.mxSession.myUser.userId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                 // Reset user power level
-                [roomDataSource.room setPowerLevelOfUserWithUserID:userId powerLevel:0 success:^{
+                [roomDataSource.room setPowerLevelOfUserWithUserID:resolvedUserId powerLevel:0 success:^{
 
                 } failure:^(NSError *error) {
 
-                    MXLogDebug(@"[MXKRoomVC] Reset user power (%@) failed", userId);
+                    MXLogDebug(@"[MXKRoomVC] Reset user power (%@) failed", resolvedUserId);
                     // Notify MatrixKit user
                     NSString *myUserId = self->roomDataSource.mxSession.myUser.userId;
                     [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];

@@ -351,8 +351,8 @@ Please see LICENSE in the repository root for full details.
 
 - (MXKContact*)searchInputContact
 {
-    // Check whether the current search input is a valid email or a Matrix user ID
-    if (currentSearchText.length && ([MXTools isEmailAddress:currentSearchText] || [MXTools isMatrixUserIdentifier:currentSearchText]))
+    // Check whether the current search input is valid for invite: email, full Matrix user ID, or short username (e.g. me, @me)
+    if (currentSearchText.length && [MXTools isValidInviteIdentifier:currentSearchText])
     {
         return [[MXKContact alloc] initMatrixContactWithDisplayName:currentSearchText andMatrixID:nil];
     }
@@ -581,8 +581,8 @@ Please see LICENSE in the repository root for full details.
         else if (indexPath.section == searchInputSection)
         {
             // This is the text entered by the user
-            // Check whether the search input is a valid email or a Matrix user ID before adding the accessory view.
-            if (![MXTools isEmailAddress:currentSearchText] && ![MXTools isMatrixUserIdentifier:currentSearchText])
+            // Enable add (+) when input is valid: email, full Matrix user ID, or short username (e.g. me, @me)
+            if (![MXTools isValidInviteIdentifier:currentSearchText])
             {
                 contactCell.contentView.alpha = 0.5;
                 contactCell.userInteractionEnabled = NO;

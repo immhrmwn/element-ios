@@ -276,7 +276,9 @@ extension ContactsPickerViewModel: ContactsTableViewControllerDelegate {
                     }
                 }
             } else {
-                room.invite(.userId(participantId)) { [weak self] response in
+                let homeserver = MXTools.serverName(inMatrixIdentifier: room.mxSession.myUserId ?? "") ?? ""
+                let resolvedUserId = MXTools.fullUserId(fromShortUsername: participantId, homeserverDomain: homeserver) ?? participantId
+                room.invite(.userId(resolvedUserId)) { [weak self] response in
                     guard let self = self else { return }
                     
                     switch response {

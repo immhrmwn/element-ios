@@ -543,14 +543,16 @@ Please see LICENSE in the repository root for full details.
                                                            
                                                            if (userId.length)
                                                            {
+                                                               NSString *homeserver = [MXTools serverNameInMatrixIdentifier:self.mainSession.myUser.userId];
+                                                               NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:userId homeserverDomain:homeserver] ?: userId;
                                                                MXRoom *mxRoom = [self.mainSession roomWithRoomId:self.dataSource.roomId];
                                                                if (mxRoom)
                                                                {
-                                                                   [mxRoom inviteUser:userId success:^{
+                                                                   [mxRoom inviteUser:resolvedUserId success:^{
                                                                        
                                                                    } failure:^(NSError *error) {
                                                                        
-                                                                       MXLogDebug(@"[MXKRoomVC] Invite %@ failed", userId);
+                                                                       MXLogDebug(@"[MXKRoomVC] Invite %@ failed", resolvedUserId);
                                                                        // Notify MatrixKit user
                                                                        NSString *myUserId = self.mainSession.myUser.userId;
                                                                        [[NSNotificationCenter defaultCenter] postNotificationName:kMXKErrorNotification object:error userInfo:myUserId ? @{kMXKErrorUserIdKey: myUserId} : nil];

@@ -1004,7 +1004,9 @@ Please see LICENSE in the repository root for full details.
                     }
                     else //if ([MXTools isMatrixUserIdentifier:participantId])
                     {
-                        inviteArray = @[participantId];
+                        NSString *homeserver = [MXTools serverNameInMatrixIdentifier:self.mainSession.myUser.userId];
+                        NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:participantId homeserverDomain:homeserver] ?: participantId;
+                        inviteArray = @[resolvedUserId];
                     }
 
                     MXWeakify(self);
