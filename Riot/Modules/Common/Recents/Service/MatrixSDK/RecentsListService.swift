@@ -410,6 +410,8 @@ public class RecentsListService: NSObject, RecentsListServiceProtocol {
             refresh()
         case RiotSettings.UserDefaultsKeys.showAllRoomsInHomeSpace:
             refresh()
+        case RiotSettings.UserDefaultsKeys.autoAcceptRoomInvites:
+            refresh()
         default:
             break
         }
@@ -444,6 +446,7 @@ public class RecentsListService: NSObject, RecentsListServiceProtocol {
     //  MARK: - Private
     
     private var shouldShowInvited: Bool {
+        guard !hideInvitedSection else { return false }
         return fetcherTypesForMode[mode]?.contains(.invited) ?? false
     }
     

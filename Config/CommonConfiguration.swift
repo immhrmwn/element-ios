@@ -75,6 +75,9 @@ class CommonConfiguration: NSObject, Configurable {
 
         // Pass threading option to the SDK
         sdkOptions.enableThreads = RiotSettings.shared.enableThreads
+
+        // Auto-accept room invites (join without user confirmation)
+        sdkOptions.autoAcceptRoomInvites = RiotSettings.shared.autoAcceptRoomInvites
         
         sdkOptions.clientPermalinkBaseUrl = BuildSettings.clientPermalinkBaseUrl
         

@@ -6,6 +6,7 @@ Please see LICENSE in the repository root for full details.
  */
 
 #import "MXRoom+Sync.h"
+#import "MXLog.h"
 
 @implementation MXRoom (Sync)
 
@@ -19,7 +20,10 @@ Please see LICENSE in the repository root for full details.
         syncState = roomState;
     }];
 
-    NSAssert(syncState, @"[MXRoom+Sync] syncState failed. Are you sure the state of the room has been already loaded?");
+    if (!syncState)
+    {
+        MXLogWarning(@"[MXRoom+Sync] syncState failed. Room state may not be loaded yet (e.g. invited room or room in transition).");
+    }
 
     return syncState;
 }

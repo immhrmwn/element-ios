@@ -25,6 +25,7 @@ final class RiotSettings: NSObject {
         static let enableUISIAutoReporting = "enableUISIAutoReporting"
         static let enableLiveLocationSharing = "enableLiveLocationSharing"
         static let showIPAddressesInSessionsManager = "showIPAddressesInSessionsManager"
+        static let autoAcceptRoomInvites = "autoAcceptRoomInvites"
         // Disappearing messages (room retention)
         static let roomRetentionPolicies = "roomRetentionPolicies"
         static let roomRetentionStartTimestamps = "roomRetentionStartTimestamps"
@@ -145,6 +146,10 @@ final class RiotSettings: NSObject {
     @UserDefault(key: "enableRingingForGroupCalls", defaultValue: false, storage: defaults)
     var enableRingingForGroupCalls
     
+    /// Indicates if room invitations should be automatically accepted (auto-join).
+    @UserDefault(key: "autoAcceptRoomInvites", defaultValue: true, storage: defaults)
+    var autoAcceptRoomInvites
+
     /// Indicates if threads enabled in the timeline.
     @UserDefault(key: "enableThreads", defaultValue: false, storage: defaults)
     var enableThreads

@@ -166,7 +166,8 @@ typedef NS_ENUM(NSUInteger, LABS_ENABLE)
     LABS_ENABLE_NEW_SESSION_MANAGER,
     LABS_ENABLE_NEW_CLIENT_INFO_FEATURE,
     LABS_ENABLE_WYSIWYG_COMPOSER,
-    LABS_ENABLE_VOICE_BROADCAST
+    LABS_ENABLE_VOICE_BROADCAST,
+    LABS_ENABLE_AUTO_ACCEPT_ROOM_INVITES
 };
 
 typedef NS_ENUM(NSUInteger, SECURITY)
@@ -614,6 +615,7 @@ SSOAuthenticationPresenterDelegate>
             [sectionLabs addRowWithTag:LABS_ENABLE_WYSIWYG_COMPOSER];
         }
         [sectionLabs addRowWithTag:LABS_ENABLE_VOICE_BROADCAST];
+        [sectionLabs addRowWithTag:LABS_ENABLE_AUTO_ACCEPT_ROOM_INVITES];
         sectionLabs.headerTitle = [VectorL10n settingsLabs];
         if (sectionLabs.hasAnyRows)
         {
@@ -2599,6 +2601,18 @@ SSOAuthenticationPresenterDelegate>
 
             cell = labelAndSwitchCell;
         }
+        else if (row == LABS_ENABLE_AUTO_ACCEPT_ROOM_INVITES)
+        {
+            MXKTableViewCellWithLabelAndSwitch *labelAndSwitchCell = [self getLabelAndSwitchCell:tableView forIndexPath:indexPath];
+
+            labelAndSwitchCell.mxkLabel.text = [VectorL10n settingsLabsEnableAutoAcceptRoomInvites];
+            labelAndSwitchCell.mxkSwitch.on = RiotSettings.shared.autoAcceptRoomInvites;
+            labelAndSwitchCell.mxkSwitch.onTintColor = ThemeService.shared.theme.tintColor;
+
+            [labelAndSwitchCell.mxkSwitch addTarget:self action:@selector(toggleAutoAcceptRoomInvites:) forControlEvents:UIControlEventTouchUpInside];
+
+            cell = labelAndSwitchCell;
+        }
     }
     else if (section == SECTION_TAG_SECURITY)
     {
@@ -3391,6 +3405,17 @@ SSOAuthenticationPresenterDelegate>
 - (void)toggleEnableVoiceBroadcastFeature:(UISwitch *)sender
 {
     RiotSettings.shared.enableVoiceBroadcast = sender.isOn;
+}
+
+- (void)toggleAutoAcceptRoomInvites:(UISwitch *)sender
+{
+    BOOL enabled = sender.isOn;
+    RiotSettings.shared.autoAcceptRoomInvites = enabled;
+    [MXSDKOptions sharedInstance].autoAcceptRoomInvites = enabled;
+    if (enabled && self.mainSession)
+    {
+        [self.mainSession joinPendingRoomInvites];
+    }
 }
 
 - (void)togglePinRoomsWithMissedNotif:(UISwitch *)sender
