@@ -377,6 +377,11 @@ NSString *const AppDelegateUniversalLinkDidChangeNotification = @"AppDelegateUni
 
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"appLanguage"];
         }
+        else
+        {
+            // Default to Indonesian when no language preference is saved
+            language = @"id";
+        }
     }
     [NSBundle mxk_setLanguage:language];
     [NSBundle mxk_setFallbackLanguage:@"en"];
