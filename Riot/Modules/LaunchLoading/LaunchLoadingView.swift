@@ -12,21 +12,13 @@ import Reusable
 @objcMembers
 final class LaunchLoadingView: UIView, NibLoadable, Themable {
     
-    // MARK: - Constants
-    
-    private enum LaunchAnimation {
-        static let duration: TimeInterval = 3.0
-        static let repeatCount = Float.greatestFiniteMagnitude
-    }
-    
     // MARK: - Properties
     
-    @IBOutlet private weak var animationView: ElementView!
+    @IBOutlet private weak var logoImageView: UIImageView!
     @IBOutlet private weak var progressContainer: UIStackView!
     @IBOutlet private weak var progressView: UIProgressView!
     @IBOutlet private weak var statusLabel: UILabel!
     
-    private var animationTimeline: Timeline_1!
     private let numberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .ordinal
@@ -43,19 +35,20 @@ final class LaunchLoadingView: UIView, NibLoadable, Themable {
     
     override func awakeFromNib() {
         super.awakeFromNib()
-        
-        let animationTimeline = Timeline_1(view: self.animationView, duration: LaunchAnimation.duration, repeatCount: LaunchAnimation.repeatCount)
-        animationTimeline.play()
-        self.animationTimeline = animationTimeline
-        
         progressContainer.isHidden = true
+        startFloatAnimation()
+    }
+    
+    private func startFloatAnimation() {
+        UIView.animate(withDuration: 1.2, delay: 0, options: [.curveEaseInOut, .autoreverse, .repeat]) { [weak self] in
+            self?.logoImageView?.transform = CGAffineTransform(translationX: 0, y: -8)
+        }
     }
     
     // MARK: - Public
     
     func update(theme: Theme) {
         self.backgroundColor = theme.backgroundColor
-        self.animationView.backgroundColor = theme.backgroundColor
     }
 }
 

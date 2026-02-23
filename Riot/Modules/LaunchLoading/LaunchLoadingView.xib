@@ -14,10 +14,13 @@
             <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
             <subviews>
-                <view contentMode="scaleAspectFit" placeholderIntrinsicWidth="130" placeholderIntrinsicHeight="130" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3KG-IR-FPV" customClass="ElementView" customModule="Element" customModuleProvider="target">
+                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="launch_screen_logo" translatesAutoresizingMaskIntoConstraints="NO" id="3KG-IR-FPV">
                     <rect key="frame" x="95" y="219" width="130" height="130"/>
-                    <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                </view>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="120" id="w-c"/>
+                        <constraint firstAttribute="height" constant="120" id="h-c"/>
+                    </constraints>
+                </imageView>
                 <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="15" translatesAutoresizingMaskIntoConstraints="NO" id="hme-ss-nFP">
                     <rect key="frame" x="20" y="472" width="280" height="36"/>
                     <subviews>
@@ -47,7 +50,7 @@
                 <constraint firstItem="3KG-IR-FPV" firstAttribute="centerX" secondItem="iN0-l3-epB" secondAttribute="centerX" id="r9K-7c-fjh"/>
             </constraints>
             <connections>
-                <outlet property="animationView" destination="3KG-IR-FPV" id="Are-fn-laY"/>
+                <outlet property="logoImageView" destination="3KG-IR-FPV" id="Are-fn-laY"/>
                 <outlet property="progressContainer" destination="hme-ss-nFP" id="XC1-4m-OD7"/>
                 <outlet property="progressView" destination="DEk-Va-xdT" id="PCI-Vi-Zyg"/>
                 <outlet property="statusLabel" destination="wzS-bN-Pht" id="Mj2-rn-i5x"/>
@@ -55,12 +58,8 @@
             <point key="canvasLocation" x="136.875" y="132.5"/>
         </view>
     </objects>
-    <designables>
-        <designable name="3KG-IR-FPV">
-            <size key="intrinsicContentSize" width="130" height="130"/>
-        </designable>
-    </designables>
     <resources>
+        <image name="launch_screen_logo" width="240" height="240"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
