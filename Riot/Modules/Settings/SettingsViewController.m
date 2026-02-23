@@ -145,7 +145,7 @@ typedef NS_ENUM(NSUInteger, ADVANCED)
     ADVANCED_ENABLE_RAGESHAKE_INDEX,
     ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX,
     ADVANCED_MARK_ALL_AS_READ_INDEX,
-    ADVANCED_CLEAR_CACHE_INDEX,
+    ADVANCED_STORAGE_MANAGEMENT_INDEX,
     ADVANCED_REPORT_BUG_INDEX,
 };
 
@@ -567,7 +567,7 @@ SSOAuthenticationPresenterDelegate>
     }
     [sectionAdvanced addRowWithTag:ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX];
     [sectionAdvanced addRowWithTag:ADVANCED_MARK_ALL_AS_READ_INDEX];
-    [sectionAdvanced addRowWithTag:ADVANCED_CLEAR_CACHE_INDEX];
+    [sectionAdvanced addRowWithTag:ADVANCED_STORAGE_MANAGEMENT_INDEX];
     if (BuildSettings.settingsScreenAllowBugReportingManually)
     {
         [sectionAdvanced addRowWithTag:ADVANCED_REPORT_BUG_INDEX];
@@ -2424,30 +2424,19 @@ SSOAuthenticationPresenterDelegate>
             
             cell = markAllBtnCell;
         }
-        else if (row == ADVANCED_CLEAR_CACHE_INDEX)
+        else if (row == ADVANCED_STORAGE_MANAGEMENT_INDEX)
         {
-            MXKTableViewCellWithButton *clearCacheBtnCell = [tableView dequeueReusableCellWithIdentifier:[MXKTableViewCellWithButton defaultReuseIdentifier]];
-            if (!clearCacheBtnCell)
+            UITableViewCell *storageCell = [tableView dequeueReusableCellWithIdentifier:@"SettingsStorageManagement"];
+            if (!storageCell)
             {
-                clearCacheBtnCell = [[MXKTableViewCellWithButton alloc] init];
+                storageCell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"SettingsStorageManagement"];
             }
-            else
-            {
-                // Fix https://github.com/vector-im/riot-ios/issues/1354
-                clearCacheBtnCell.mxkButton.titleLabel.text = nil;
-            }
-            
-            NSString *btnTitle = [VectorL10n settingsClearCache];
-            [clearCacheBtnCell.mxkButton setTitle:btnTitle forState:UIControlStateNormal];
-            [clearCacheBtnCell.mxkButton setTitle:btnTitle forState:UIControlStateHighlighted];
-            [clearCacheBtnCell.mxkButton setTintColor:ThemeService.shared.theme.tintColor];
-            clearCacheBtnCell.mxkButton.titleLabel.font = [UIFont systemFontOfSize:17];
-            
-            [clearCacheBtnCell.mxkButton removeTarget:self action:nil forControlEvents:UIControlEventTouchUpInside];
-            [clearCacheBtnCell.mxkButton addTarget:self action:@selector(clearCache:) forControlEvents:UIControlEventTouchUpInside];
-            clearCacheBtnCell.mxkButton.accessibilityIdentifier = nil;
-            
-            cell = clearCacheBtnCell;
+            storageCell.textLabel.text = [VectorL10n screenStorageManagementTitle];
+            storageCell.textLabel.textColor = ThemeService.shared.theme.textPrimaryColor;
+            storageCell.backgroundColor = ThemeService.shared.theme.backgroundColor;
+            [storageCell vc_setAccessoryDisclosureIndicatorWithCurrentTheme];
+            storageCell.selectionStyle = UITableViewCellSelectionStyleDefault;
+            cell = storageCell;
         }
         else if (row == ADVANCED_REPORT_BUG_INDEX)
         {
@@ -2900,6 +2889,18 @@ SSOAuthenticationPresenterDelegate>
         else if (section == SECTION_TAG_ADVANCED && row == ADVANCED_DEFAULT_DISAPPEARING_MESSAGES_INDEX)
         {
             [self showDefaultDisappearingMessagesPicker];
+        }
+        else if (section == SECTION_TAG_ADVANCED && row == ADVANCED_STORAGE_MANAGEMENT_INDEX)
+        {
+            Class factoryClass = NSClassFromString(@"StorageManagementViewControllerFactory")
+                ?: NSClassFromString(@"Element.StorageManagementViewControllerFactory")
+                ?: NSClassFromString(@"Riot.StorageManagementViewControllerFactory");
+            if (factoryClass && [factoryClass respondsToSelector:@selector(createViewController)]) {
+                UIViewController *storageVC = [factoryClass performSelector:@selector(createViewController)];
+                if (storageVC) {
+                    [self pushViewController:storageVC];
+                }
+            }
         }
         else if (section == SECTION_TAG_ABOUT)
         {

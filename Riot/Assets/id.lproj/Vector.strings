@@ -146,6 +146,27 @@
 "settings_identity_server_settings" = "SERVER IDENTITAS";
 "settings_user_settings" = "PENGATURAN PENGGUNA";
 "settings_clear_cache" = "Bersihkan cache";
+
+"screen_storage_management_title" = "Penyimpanan";
+"screen_storage_management_usage_header" = "Pemakaian penyimpanan";
+"screen_storage_management_used_by_app" = "Dipakai aplikasi";
+"screen_storage_management_keep_messages_header" = "Hapus otomatis";
+"screen_storage_management_keep_messages_for_label" = "Simpan pesan selama:";
+"screen_storage_management_keep_messages_footer" = "Cache lokal dibersihkan setelah periode ini biar hemat tempat. Pesan akan unduh lagi pas kamu buka room.";
+"screen_storage_management_keep_forever" = "Selamanya";
+"screen_storage_management_keep_one_week" = "1 minggu";
+"screen_storage_management_keep_one_month" = "1 bulan";
+"screen_storage_management_keep_three_months" = "3 bulan";
+"screen_storage_management_keep_six_months" = "6 bulan";
+"screen_storage_management_keep_one_year" = "1 tahun";
+"screen_storage_management_manual_header" = "Hapus pesan sekarang";
+"screen_storage_management_manual_footer" = "Cache pesan dan media di device ini akan dihapus. Akun, kunci enkripsi, dan daftar room tetap aman. Pesan akan unduh lagi pas buka room.";
+"screen_storage_management_delete_now_button" = "Bersihkan cache sekarang";
+"screen_storage_management_clear_cache_alert_title" = "Bersihkan cache?";
+"screen_storage_management_clear_cache_alert_message" = "Cache pesan dan media di device ini akan dihapus. Akun dan kunci enkripsi nggak kena. Pesan akan unduh lagi pas kamu buka room.";
+"screen_storage_management_clear_cache_alert_clear" = "Bersihkan cache";
+"screen_storage_management_delete_success" = "Cache sudah dibersihkan";
+"screen_storage_management_loading" = "Loading…";
 "room_event_action_report" = "Laporkan konten";
 "settings_report_bug" = "Laporkan bug";
 "room_preview_try_join_an_unknown_room_default" = "sebuah ruangan";

@@ -26,6 +26,8 @@ final class RiotSettings: NSObject {
         static let enableLiveLocationSharing = "enableLiveLocationSharing"
         static let showIPAddressesInSessionsManager = "showIPAddressesInSessionsManager"
         static let autoAcceptRoomInvites = "autoAcceptRoomInvites"
+        static let keepMessagesFor = "keepMessagesFor"
+        static let lastLocalCacheCleanupTimestamp = "lastLocalCacheCleanupTimestamp"
         // Disappearing messages (room retention)
         static let roomRetentionPolicies = "roomRetentionPolicies"
         static let roomRetentionStartTimestamps = "roomRetentionStartTimestamps"
@@ -406,6 +408,41 @@ final class RiotSettings: NSObject {
     /// Number of spaces previously tracked by the `AnalyticsSpaceTracker` instance.
     @UserDefault(key: "lastNumberOfTrackedSpaces", defaultValue: nil, storage: defaults)
     var lastNumberOfTrackedSpaces: Int?
+    
+    // MARK: - Storage management
+    
+    /// How long to keep cached messages locally before automatic cleanup. "Forever" = no automatic cleanup.
+    @objc enum KeepMessagesFor: Int, CaseIterable {
+        case forever = 0
+        case oneWeek = 1
+        case oneMonth = 2
+        case threeMonths = 3
+        case sixMonths = 4
+        case oneYear = 5
+        
+        /// Duration in seconds after which to run cleanup. nil for forever.
+        var cleanupIntervalSeconds: TimeInterval? {
+            switch self {
+            case .forever: return nil
+            case .oneWeek: return 7 * 24 * 60 * 60
+            case .oneMonth: return 30 * 24 * 60 * 60
+            case .threeMonths: return 90 * 24 * 60 * 60
+            case .sixMonths: return 180 * 24 * 60 * 60
+            case .oneYear: return 365 * 24 * 60 * 60
+            }
+        }
+    }
+    
+    @UserDefault(key: UserDefaultsKeys.keepMessagesFor, defaultValue: 0, storage: defaults)
+    var keepMessagesForRaw: Int
+    
+    var keepMessagesFor: KeepMessagesFor {
+        get { KeepMessagesFor(rawValue: keepMessagesForRaw) ?? .forever }
+        set { keepMessagesForRaw = newValue.rawValue }
+    }
+    
+    @UserDefault(key: UserDefaultsKeys.lastLocalCacheCleanupTimestamp, defaultValue: 0, storage: defaults)
+    var lastLocalCacheCleanupTimestamp: TimeInterval
     
     // MARK: - Disappearing messages (room retention)
     

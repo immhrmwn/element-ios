@@ -715,6 +715,27 @@ Tap the + to start adding people.";
 "settings_mark_all_as_read" = "Mark all messages as read";
 "settings_report_bug" = "Report bug";
 "settings_clear_cache" = "Clear cache";
+
+"screen_storage_management_title" = "Storage";
+"screen_storage_management_usage_header" = "Storage usage";
+"screen_storage_management_used_by_app" = "Used by app";
+"screen_storage_management_keep_messages_header" = "Auto delete";
+"screen_storage_management_keep_messages_for_label" = "Keep messages for:";
+"screen_storage_management_keep_messages_footer" = "Local cache is cleared after this period to save space. Messages will download again when you open a room.";
+"screen_storage_management_keep_forever" = "Forever";
+"screen_storage_management_keep_one_week" = "1 week";
+"screen_storage_management_keep_one_month" = "1 month";
+"screen_storage_management_keep_three_months" = "3 months";
+"screen_storage_management_keep_six_months" = "6 months";
+"screen_storage_management_keep_one_year" = "1 year";
+"screen_storage_management_manual_header" = "Clear messages now";
+"screen_storage_management_manual_footer" = "Cached messages and media on this device will be deleted. Your account, encryption keys, and room list stay safe. Messages will download again when you open rooms.";
+"screen_storage_management_delete_now_button" = "Clear cache now";
+"screen_storage_management_clear_cache_alert_title" = "Clear cache?";
+"screen_storage_management_clear_cache_alert_message" = "Cached messages and media on this device will be deleted. Your account and encryption keys are not affected. Messages will download again when you open rooms.";
+"screen_storage_management_clear_cache_alert_clear" = "Clear cache";
+"screen_storage_management_delete_success" = "Cache cleared";
+"screen_storage_management_loading" = "Loading…";
 "settings_config_home_server" = "Homeserver is %@";
 "settings_config_user_id" = "Logged in as %@";
 

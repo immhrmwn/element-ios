@@ -6851,6 +6851,86 @@ public class VectorL10n: NSObject {
   public static var saving: String { 
     return VectorL10n.tr("Vector", "saving") 
   }
+  /// Clear cache
+  public static var screenStorageManagementClearCacheAlertClear: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_clear_cache_alert_clear") 
+  }
+  /// Cached messages and media on this device will be deleted. Your account and encryption keys are not affected. Messages will download again when you open rooms.
+  public static var screenStorageManagementClearCacheAlertMessage: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_clear_cache_alert_message") 
+  }
+  /// Clear cache?
+  public static var screenStorageManagementClearCacheAlertTitle: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_clear_cache_alert_title") 
+  }
+  /// Clear cache now
+  public static var screenStorageManagementDeleteNowButton: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_delete_now_button") 
+  }
+  /// Cache cleared
+  public static var screenStorageManagementDeleteSuccess: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_delete_success") 
+  }
+  /// Forever
+  public static var screenStorageManagementKeepForever: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_forever") 
+  }
+  /// Local cache is cleared after this period to save space. Messages will download again when you open a room.
+  public static var screenStorageManagementKeepMessagesFooter: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_messages_footer") 
+  }
+  /// Keep messages for:
+  public static var screenStorageManagementKeepMessagesForLabel: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_messages_for_label") 
+  }
+  /// Auto delete
+  public static var screenStorageManagementKeepMessagesHeader: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_messages_header") 
+  }
+  /// 1 month
+  public static var screenStorageManagementKeepOneMonth: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_month") 
+  }
+  /// 1 week
+  public static var screenStorageManagementKeepOneWeek: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_week") 
+  }
+  /// 1 year
+  public static var screenStorageManagementKeepOneYear: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_year") 
+  }
+  /// 6 months
+  public static var screenStorageManagementKeepSixMonths: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_six_months") 
+  }
+  /// 3 months
+  public static var screenStorageManagementKeepThreeMonths: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_three_months") 
+  }
+  /// Loading…
+  public static var screenStorageManagementLoading: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_loading") 
+  }
+  /// Cached messages and media on this device will be deleted. Your account, encryption keys, and room list stay safe. Messages will download again when you open rooms.
+  public static var screenStorageManagementManualFooter: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_manual_footer") 
+  }
+  /// Clear messages now
+  public static var screenStorageManagementManualHeader: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_manual_header") 
+  }
+  /// Storage
+  public static var screenStorageManagementTitle: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_title") 
+  }
+  /// Storage usage
+  public static var screenStorageManagementUsageHeader: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_usage_header") 
+  }
+  /// Used by app
+  public static var screenStorageManagementUsedByApp: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_used_by_app") 
+  }
   /// Search
   public static var searchDefaultPlaceholder: String { 
     return VectorL10n.tr("Vector", "search_default_placeholder") 
