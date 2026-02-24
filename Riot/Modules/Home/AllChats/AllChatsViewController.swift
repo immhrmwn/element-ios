@@ -539,11 +539,14 @@ class AllChatsViewController: HomeViewController {
         self.isToolbarHidden = false
         self.update(with: theme)
         
-        self.toolbar.items = [
-            spacesButton,
-            UIBarButtonItem.flexibleSpace(),
-            UIBarButtonItem(image: Asset.Images.allChatsEditIcon.image, menu: menu)
-        ]
+        var items: [UIBarButtonItem] = []
+        if BuildSettings.showSpaceSelectorButton {
+            items.append(spacesButton)
+        }
+        items.append(UIBarButtonItem.flexibleSpace())
+        items.append(UIBarButtonItem(image: Asset.Images.allChatsEditIcon.image, menu: menu))
+        
+        self.toolbar.items = items
     }
     
     private func showCreateSpace(parentSpaceId: String?) {

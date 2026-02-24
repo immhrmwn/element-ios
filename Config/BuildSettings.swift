@@ -437,6 +437,9 @@ final class BuildSettings: NSObject {
     
     // MARK: - New App Layout
     static let newAppLayoutEnabled = true
+    
+    /// Whether to show the spaces selector button in the All Chats toolbar (opens space modal).
+    static let showSpaceSelectorButton = false
 
     // MARK: - QR Login
     
