@@ -103,7 +103,8 @@ Please see LICENSE in the repository root for full details.
     // Prepare its data source
     ContactsDataSource *dataSource = [[ContactsDataSource alloc] initWithMatrixSession:self.mainSession];
     dataSource.areSectionsShrinkable = YES;
-    dataSource.displaySearchInputInContactsList = YES;
+    // Do not show the generic “search user / invite” input row.
+    dataSource.displaySearchInputInContactsList = NO;
     // In the start chat screen, show only display names (no Matrix IDs).
     dataSource.forceMatrixIdInDisplayName = NO;
     // Add a plus icon to the contact cell when a search session is in progress,
@@ -120,7 +121,7 @@ Please see LICENSE in the repository root for full details.
     
     _searchBarView.placeholder = [VectorL10n roomCreationInviteAnotherUser];
     _searchBarView.returnKeyType = UIReturnKeyDone;
-    _searchBarView.autocapitalizationType = UITextAutocapitalizationTypeNone;    
+    _searchBarView.autocapitalizationType = UITextAutocapitalizationTypeNone;
     [self refreshSearchBarItemsColor:_searchBarView];
     
     [self.contactsTableView registerClass:ContactTableViewCell.class forCellReuseIdentifier:@"ParticipantTableViewCellId"];
@@ -133,37 +134,16 @@ Please see LICENSE in the repository root for full details.
 
 - (void)setupInviteFriendsHeaderView
 {
-    if (self.inviteFriendsHeaderView)
-    {
-        return;
-    }
-    
-    if (!RiotSettings.shared.allowInviteExernalUsers)
-    {
-        self.contactsTableView.tableHeaderView = nil;
-        return;
-    }
-    
-    InviteFriendsHeaderView *inviteFriendsHeaderView = [InviteFriendsHeaderView instantiate];
-    inviteFriendsHeaderView.delegate = self;
-    self.contactsTableView.tableHeaderView = inviteFriendsHeaderView;
-    
-    self.inviteFriendsHeaderView = inviteFriendsHeaderView;
+    // In the Start Chat screen we no longer show the “Invite your friends
+    // to BatChat” header/button.
+    self.contactsTableView.tableHeaderView = nil;
+    self.inviteFriendsHeaderView = nil;
 }
 
 - (void)showInviteFriendsHeaderView:(BOOL)show
 {
-    if (show)
-    {
-        if (!self.inviteFriendsHeaderView)
-        {
-            [self setupInviteFriendsHeaderView];
-        }
-    }
-    else if (self.inviteFriendsHeaderView != nil)
-    {
-        self.contactsTableView.tableHeaderView = nil;
-    }
+    // Always hide the invite friends header in this flow.
+    self.contactsTableView.tableHeaderView = nil;
 }
 
 - (void)userInterfaceThemeDidChange
@@ -857,8 +837,9 @@ Please see LICENSE in the repository root for full details.
     {
         [self showAllowOnlyOneInvitByEmailAllowedHeaderView:NO];
     }
-    
-    [contactsDataSource searchWithPattern:searchText forceReset:NO];
+    // Only filter the in‑memory Suggestions list; do not hit the homeserver
+    // user directory from this screen.
+    [contactsDataSource filterSuggestionsWithText:searchText];
     self.contactsAreFilteredWithSearch = searchText.length ? YES : NO;
 }
 
@@ -876,8 +857,8 @@ Please see LICENSE in the repository root for full details.
     self->currentSearch = nil;
     self.isAddParticipantSearchBarEditing = NO;
     
-    // Reset filtering
-    [contactsDataSource searchWithPattern:nil forceReset:NO];
+    // Reset local Suggestions filtering (no homeserver request).
+    [contactsDataSource filterSuggestionsWithText:nil];
     
     // Leave search
     [searchBar resignFirstResponder];

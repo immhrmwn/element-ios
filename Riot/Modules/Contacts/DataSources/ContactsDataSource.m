@@ -50,6 +50,10 @@ Please see LICENSE in the repository root for full details.
     LocalContactsSectionHeaderContainerView *localContactsCheckboxContainer;
     UILabel *checkboxLabel;
     UIImageView *localContactsCheckbox;
+    
+    // Suggestions (recent DM contacts) support
+    NSMutableArray<MXKContact*> *unfilteredSuggestedContacts;
+    NSString *suggestionsFilterText;
 }
 
 @end
@@ -108,6 +112,7 @@ Please see LICENSE in the repository root for full details.
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXKContactManagerDidUpdateLocalContactMatrixIDsNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXSessionDirectRoomsDidChangeNotification object:nil];
     
+    unfilteredSuggestedContacts = nil;
     filteredSuggestedContacts = nil;
     filteredLocalContacts = nil;
     filteredMatrixContacts = nil;
@@ -416,6 +421,51 @@ Please see LICENSE in the repository root for full details.
     [self forceRefresh];
 }
 
+- (NSMutableArray<MXKContact*> *)filteredSuggestedContactsFromSource:(NSArray<MXKContact*> *)source
+{
+    if (!source.count)
+    {
+        return [NSMutableArray array];
+    }
+    
+    NSString *filter = [suggestionsFilterText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    if (!filter.length)
+    {
+        return [NSMutableArray arrayWithArray:source];
+    }
+    
+    NSMutableArray<MXKContact*> *results = [NSMutableArray array];
+    for (MXKContact *contact in source)
+    {
+        NSString *displayName = contact.displayName ?: @"";
+        BOOL matches = NO;
+        
+        if (displayName.length
+            && [displayName rangeOfString:filter options:NSCaseInsensitiveSearch].location != NSNotFound)
+        {
+            matches = YES;
+        }
+        else
+        {
+            for (NSString *mxId in contact.matrixIdentifiers)
+            {
+                if ([mxId rangeOfString:filter options:NSCaseInsensitiveSearch].location != NSNotFound)
+                {
+                    matches = YES;
+                    break;
+                }
+            }
+        }
+        
+        if (matches)
+        {
+            [results addObject:contact];
+        }
+    }
+    
+    return results;
+}
+
 - (NSMutableArray<MXKContact*>*)unfilteredSuggestedContactsArray
 {
     NSArray *directContacts = [MXKContactManager sharedManager].directMatrixContacts;
@@ -559,8 +609,12 @@ Please see LICENSE in the repository root for full details.
     else
     {
         // Display suggested contacts (recent DMs) at top when search is empty
-        filteredSuggestedContacts = [self unfilteredSuggestedContactsArray];
-        if (filteredSuggestedContacts.count)
+        unfilteredSuggestedContacts = [self unfilteredSuggestedContactsArray];
+        filteredSuggestedContacts = [self filteredSuggestedContactsFromSource:unfilteredSuggestedContacts];
+        // Keep the Suggestions section visible as long as there is at least one
+        // suggested contact overall – even if the current filter yields zero
+        // results, so that we can show a “no result” row.
+        if (unfilteredSuggestedContacts.count)
         {
             filteredSuggestedContactsSection = count++;
         }
@@ -591,7 +645,16 @@ Please see LICENSE in the repository root for full details.
     }
     else if (section == filteredSuggestedContactsSection && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_SUGGESTED_BITWISE))
     {
-        count = filteredSuggestedContacts.count;
+        // When filtering suggestions and there is no match, display a single
+        // placeholder row saying that no user was found.
+        if (filteredSuggestedContacts.count)
+        {
+            count = filteredSuggestedContacts.count;
+        }
+        else if (suggestionsFilterText.length)
+        {
+            count = 1;
+        }
     }
     else if (section == filteredLocalContactsSection && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE))
     {
@@ -714,6 +777,11 @@ Please see LICENSE in the repository root for full details.
             {
                 tableViewCell.textLabel.text = [VectorL10n searchNoResult];
             }
+        }
+        else if (indexPath.section == filteredSuggestedContactsSection)
+        {
+            // Local suggestions search: simply show a “no result” row.
+            tableViewCell.textLabel.text = [VectorL10n searchNoResult];
         }
         else if (indexPath.section == filteredLocalContactsSection)
         {
@@ -1008,6 +1076,18 @@ Please see LICENSE in the repository root for full details.
     shrinkedSectionsBitMask = savedShrinkedSectionsBitMask;
     
     return stickyHeader;
+}
+
+- (void)filterSuggestionsWithText:(NSString *)text
+{
+    suggestionsFilterText = text;
+    filteredSuggestedContacts = [self filteredSuggestedContactsFromSource:unfilteredSuggestedContacts];
+    
+    // Inform the delegate so the table view reloads.
+    if (self.delegate)
+    {
+        [self.delegate dataSource:self didCellChange:nil];
+    }
 }
 
 #pragma mark - Action

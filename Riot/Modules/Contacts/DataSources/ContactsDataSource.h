@@ -158,6 +158,13 @@ typedef enum : NSUInteger
 @property (nonatomic) BOOL displaySearchInputInContactsList;
 
 /**
+ Filter the in‑memory suggestions (recent DM contacts) using the given text.
+ This does not trigger any homeserver requests and only affects the Suggestions section.
+ Passing nil or an empty string clears the filter.
+ */
+- (void)filterSuggestionsWithText:(NSString *)text;
+
+/**
  The temporary contact built from the search input. This contact is not nil only when the search input is
  a valid email or a Matrix user ID.
  */
