@@ -108,6 +108,13 @@ Please see LICENSE in the repository root for full details.
 - (void)refreshContactsTable;
 
 /**
+ Filter only the in‑memory Suggestions (recent DM contacts) using the given text.
+ This helper is used by flows that want a local “Saran” search without
+ hitting the homeserver user directory.
+ */
+- (void)filterSuggestionsOnlyWithSearchText:(NSString *)searchText;
+
+/**
  The delegate for the view controller.
  */
 @property (nonatomic, weak) id<ContactsTableViewControllerDelegate> contactsTableViewControllerDelegate;

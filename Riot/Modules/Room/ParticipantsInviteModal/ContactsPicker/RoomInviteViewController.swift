@@ -51,3 +51,23 @@ extension RoomInviteViewController: ShareInviteLinkHeaderViewDelegate {
         showInviteLink(from: button)
     }
 }
+
+// MARK: - UISearchBarDelegate (Suggestions-only)
+
+extension RoomInviteViewController {
+    
+    override func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        // Mirror the Start Chat behaviour: only filter the in‑memory Suggestions
+        // section (recent DM contacts), without hitting the homeserver user
+        // directory.
+        filterSuggestionsOnly(withSearchText: searchText)
+    }
+    
+    override func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        // Keep the original behaviour from ContactsTableViewController:
+        // reset generic filtering and close the invite screen.
+        super.searchBarCancelButtonClicked(searchBar)
+        // Also reset local Suggestions filtering.
+        filterSuggestionsOnly(withSearchText: nil)
+    }
+}

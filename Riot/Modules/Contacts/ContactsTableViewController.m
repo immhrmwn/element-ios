@@ -525,6 +525,21 @@ Please see LICENSE in the repository root for full details.
     [self withdrawViewControllerAnimated:YES completion:nil];
 }
 
+#pragma mark - Suggestions-only filtering
+
+- (void)filterSuggestionsOnlyWithSearchText:(NSString *)searchText
+{
+    // Only available when the underlying data source supports suggestions
+    // filtering; ignore otherwise.
+    if ([contactsDataSource respondsToSelector:@selector(filterSuggestionsWithText:)])
+    {
+        // Do not call the generic searchWithPattern here, to avoid
+        // hitting the homeserver user directory. This stays purely local.
+        [(id)contactsDataSource filterSuggestionsWithText:searchText];
+        self.contactsAreFilteredWithSearch = searchText.length ? YES : NO;
+    }
+}
+
 #pragma mark - FindYourContactsFooterViewDelegate
 
 - (void)contactsFooterViewDidRequestFindContacts:(FindYourContactsFooterView *)footerView

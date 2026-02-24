@@ -94,7 +94,10 @@ class ContactsPickerViewModel: NSObject, ContactsPickerViewModelProtocol {
             return false
         }
         contactsDataSource.areSectionsShrinkable = true
-        contactsDataSource.displaySearchInputInContactsList = true
+        // Do not show the generic “search input” row; search is handled via
+        // the top search bar and will only filter the Suggestions section
+        // (recent DM contacts) locally.
+        contactsDataSource.displaySearchInputInContactsList = false
         // In the room invite picker, show only display names (no Matrix IDs suffix).
         contactsDataSource.forceMatrixIdInDisplayName = false
         

@@ -839,8 +839,7 @@ Please see LICENSE in the repository root for full details.
     }
     // Only filter the in‑memory Suggestions list; do not hit the homeserver
     // user directory from this screen.
-    [contactsDataSource filterSuggestionsWithText:searchText];
-    self.contactsAreFilteredWithSearch = searchText.length ? YES : NO;
+    [self filterSuggestionsOnlyWithSearchText:searchText];
 }
 
 - (BOOL)searchBarShouldBeginEditing:(UISearchBar *)searchBar
@@ -858,7 +857,7 @@ Please see LICENSE in the repository root for full details.
     self.isAddParticipantSearchBarEditing = NO;
     
     // Reset local Suggestions filtering (no homeserver request).
-    [contactsDataSource filterSuggestionsWithText:nil];
+    [self filterSuggestionsOnlyWithSearchText:nil];
     
     // Leave search
     [searchBar resignFirstResponder];
