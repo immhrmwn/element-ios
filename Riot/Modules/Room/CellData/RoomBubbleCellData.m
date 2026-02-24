@@ -26,6 +26,12 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
 @property(nonatomic, readwrite) CGFloat additionalContentHeight;
 @property(nonatomic) BOOL shouldUpdateAdditionalContentHeight;
 
+/// Pending eventIds whose URL previews should be refreshed. Used to debounce preview loading.
+@property(nonatomic) NSMutableSet<NSString *> *pendingURLPreviewEventIds;
+
+/// Debounce timer for URL preview refreshes.
+@property(nonatomic) dispatch_source_t urlPreviewDebounceTimer;
+
 // Flags to "Show All" reactions for an event
 @property(nonatomic) NSMutableSet<NSString* /* eventId */> *eventsToShowAllReactions;
 
@@ -47,6 +53,7 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
     {
         _eventsToShowAllReactions = [NSMutableSet set];
         _componentIndexOfSentMessageTick = -1;
+        _pendingURLPreviewEventIds = [NSMutableSet set];
     }
     return self;
 }
@@ -57,6 +64,7 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
     
     if (self)
     {
+        _pendingURLPreviewEventIds = [NSMutableSet set];
         self.displayTimestampForSelectedComponentOnLeftWhenPossible = YES;
         
         switch (event.eventType)
@@ -1416,6 +1424,66 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
 #pragma mark - URL Previews
 
 - (void)refreshURLPreviewForEventId:(NSString *)eventId
+{
+    if (!eventId)
+    {
+        return;
+    }
+    
+    // Debounce URL preview loading to avoid repeated network work when many events
+    // (decryption, edits, etc.) arrive in quick succession for the same bubble.
+    @synchronized (self)
+    {
+        [self.pendingURLPreviewEventIds addObject:eventId];
+        
+        if (self.urlPreviewDebounceTimer)
+        {
+            dispatch_source_cancel(self.urlPreviewDebounceTimer);
+            self.urlPreviewDebounceTimer = nil;
+        }
+        
+        dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+        dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+        self.urlPreviewDebounceTimer = timer;
+        
+        dispatch_time_t start = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC));
+        dispatch_source_set_timer(timer, start, DISPATCH_TIME_FOREVER, 0);
+        
+        __weak typeof(self) weakSelf = self;
+        dispatch_source_set_event_handler(timer, ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf)
+            {
+                return;
+            }
+            
+            NSSet<NSString *> *eventIdsToProcess = nil;
+            @synchronized (strongSelf)
+            {
+                if (strongSelf.urlPreviewDebounceTimer)
+                {
+                    dispatch_source_cancel(strongSelf.urlPreviewDebounceTimer);
+                    strongSelf.urlPreviewDebounceTimer = nil;
+                }
+                
+                if (strongSelf.pendingURLPreviewEventIds.count)
+                {
+                    eventIdsToProcess = [strongSelf.pendingURLPreviewEventIds copy];
+                    [strongSelf.pendingURLPreviewEventIds removeAllObjects];
+                }
+            }
+            
+            for (NSString *pendingEventId in eventIdsToProcess)
+            {
+                [strongSelf refreshURLPreviewNowForEventId:pendingEventId];
+            }
+        });
+        
+        dispatch_resume(timer);
+    }
+}
+
+- (void)refreshURLPreviewNowForEventId:(NSString *)eventId
 {
     // Get the event's component, but only if it has a link.
     MXKRoomBubbleComponent *component = [self bubbleComponentWithLinkForEventId:eventId];
