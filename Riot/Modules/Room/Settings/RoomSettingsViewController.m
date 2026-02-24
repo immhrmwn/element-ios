@@ -73,9 +73,12 @@ enum
 enum
 {
     ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR,
     ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY,
-    ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS,
-    ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK,
+    ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MONTH
 };
 
 enum
@@ -606,9 +609,12 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
             }
             Section *sectionDisappearing = [Section sectionWithTag:SECTION_TAG_DISAPPEARING_MESSAGES];
             [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR];
             [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK];
+            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MONTH];
             sectionDisappearing.headerTitle = [VectorL10n roomDetailsDisappearingMessagesSection];
             [tmpSections addObject:sectionDisappearing];
         }
@@ -2680,16 +2686,28 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                 disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessagesOff];
                 secondsForRow = 0;
                 break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Minute];
+                secondsForRow = 60;
+                break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages5Minutes];
+                secondsForRow = 5 * 60;
+                break;
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Hour];
+                secondsForRow = 60 * 60;
+                break;
             case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
                 disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Day];
                 secondsForRow = 24 * 60 * 60;
                 break;
-            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
-                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages7Days];
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Week];
                 secondsForRow = 7 * 24 * 60 * 60;
                 break;
-            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS:
-                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages30Days];
+            case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MONTH:
+                disappearingCell.label.text = [VectorL10n roomDetailsDisappearingMessages1Month];
                 secondsForRow = 30 * 24 * 60 * 60;
                 break;
             default:
@@ -3107,13 +3125,22 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                     case ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF:
                         seconds = @0;
                         break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE:
+                        seconds = @(60);
+                        break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES:
+                        seconds = @(5 * 60);
+                        break;
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR:
+                        seconds = @(60 * 60);
+                        break;
                     case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY:
                         seconds = @(24 * 60 * 60);
                         break;
-                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_7_DAYS:
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK:
                         seconds = @(7 * 24 * 60 * 60);
                         break;
-                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_30_DAYS:
+                    case ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MONTH:
                         seconds = @(30 * 24 * 60 * 60);
                         break;
                     default:

@@ -5539,9 +5539,29 @@ public class VectorL10n: NSObject {
   public static var roomDetailsDisappearingMessages1Day: String { 
     return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_day") 
   }
+  /// 1 hour
+  public static var roomDetailsDisappearingMessages1Hour: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_hour") 
+  }
+  /// 1 minute
+  public static var roomDetailsDisappearingMessages1Minute: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_minute") 
+  }
+  /// 1 month
+  public static var roomDetailsDisappearingMessages1Month: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_month") 
+  }
+  /// 1 week
+  public static var roomDetailsDisappearingMessages1Week: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_1_week") 
+  }
   /// 30 days
   public static var roomDetailsDisappearingMessages30Days: String { 
     return VectorL10n.tr("Vector", "room_details_disappearing_messages_30_days") 
+  }
+  /// 5 minutes
+  public static var roomDetailsDisappearingMessages5Minutes: String { 
+    return VectorL10n.tr("Vector", "room_details_disappearing_messages_5_minutes") 
   }
   /// 7 days
   public static var roomDetailsDisappearingMessages7Days: String { 

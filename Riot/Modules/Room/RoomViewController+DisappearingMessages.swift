@@ -51,12 +51,16 @@ import MatrixSDK
         MXLog.debug("[RoomVC] bannerDurationText roomId=\(roomId) policySeconds=\(policySeconds?.stringValue ?? "nil") source=\(source)")
         guard let seconds = policySeconds?.intValue, seconds > 0 else { return nil }
         
-        let days = seconds / (24 * 60 * 60)
-        switch days {
-        case 1: return VectorL10n.roomDetailsDisappearingMessages1Day
-        case 7: return VectorL10n.roomDetailsDisappearingMessages7Days
-        case 30: return VectorL10n.roomDetailsDisappearingMessages30Days
-        default: return VectorL10n.roomDisappearingMessagesDurationDays(days)
+        switch seconds {
+        case 60: return VectorL10n.roomDetailsDisappearingMessages1Minute
+        case 5 * 60: return VectorL10n.roomDetailsDisappearingMessages5Minutes
+        case 60 * 60: return VectorL10n.roomDetailsDisappearingMessages1Hour
+        case 24 * 60 * 60: return VectorL10n.roomDetailsDisappearingMessages1Day
+        case 7 * 24 * 60 * 60: return VectorL10n.roomDetailsDisappearingMessages1Week
+        case 30 * 24 * 60 * 60: return VectorL10n.roomDetailsDisappearingMessages1Month
+        default:
+            let days = seconds / (24 * 60 * 60)
+            return VectorL10n.roomDisappearingMessagesDurationDays(days)
         }
     }
 }

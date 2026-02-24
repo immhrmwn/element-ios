@@ -17,27 +17,36 @@ struct RoomRetentionPolicy: Codable, Equatable {
 }
 
 /// UI option for disappearing messages.
+/// Raw values are approximate ordering; actual duration is from maxLifetimeSeconds.
 enum DisappearingMessagesOption: Int, CaseIterable, Comparable, Codable {
     case off = 0
-    case oneDay = 1
-    case sevenDays = 7
-    case thirtyDays = 30
+    case oneMinute = 1
+    case fiveMinutes = 2
+    case oneHour = 3
+    case oneDay = 4
+    case oneWeek = 5
+    case oneMonth = 6
 
     static func < (lhs: DisappearingMessagesOption, rhs: DisappearingMessagesOption) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 
-    var policy: RoomRetentionPolicy? {
+    /// Duration in seconds for this option (nil for off).
+    var maxLifetimeSeconds: Int? {
         switch self {
-        case .off:
-            return nil
-        case .oneDay:
-            return RoomRetentionPolicy(maxLifetimeSeconds: 24 * 60 * 60)
-        case .sevenDays:
-            return RoomRetentionPolicy(maxLifetimeSeconds: 7 * 24 * 60 * 60)
-        case .thirtyDays:
-            return RoomRetentionPolicy(maxLifetimeSeconds: 30 * 24 * 60 * 60)
+        case .off: return nil
+        case .oneMinute: return 60
+        case .fiveMinutes: return 5 * 60
+        case .oneHour: return 60 * 60
+        case .oneDay: return 24 * 60 * 60
+        case .oneWeek: return 7 * 24 * 60 * 60
+        case .oneMonth: return 30 * 24 * 60 * 60
         }
+    }
+
+    var policy: RoomRetentionPolicy? {
+        guard let sec = maxLifetimeSeconds else { return nil }
+        return RoomRetentionPolicy(maxLifetimeSeconds: sec)
     }
 
     init(policy: RoomRetentionPolicy?) {
@@ -46,14 +55,13 @@ enum DisappearingMessagesOption: Int, CaseIterable, Comparable, Codable {
             return
         }
         switch policy.maxLifetimeSeconds {
-        case 24 * 60 * 60:
-            self = .oneDay
-        case 7 * 24 * 60 * 60:
-            self = .sevenDays
-        case 30 * 24 * 60 * 60:
-            self = .thirtyDays
-        default:
-            self = .off
+        case 60: self = .oneMinute
+        case 5 * 60: self = .fiveMinutes
+        case 60 * 60: self = .oneHour
+        case 24 * 60 * 60: self = .oneDay
+        case 7 * 24 * 60 * 60: self = .oneWeek
+        case 30 * 24 * 60 * 60: self = .oneMonth
+        default: self = .off
         }
     }
 }

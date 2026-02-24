@@ -463,6 +463,14 @@
 "room_details_files" = "Unggahan";
 "room_details_people" = "Anggota";
 "room_details_title_for_dm" = "Detail";
+"room_details_disappearing_messages_section" = "Pesan hilang";
+"room_details_disappearing_messages_off" = "Nonaktif";
+"room_details_disappearing_messages_1_minute" = "1 menit";
+"room_details_disappearing_messages_5_minutes" = "5 menit";
+"room_details_disappearing_messages_1_hour" = "1 jam";
+"room_details_disappearing_messages_1_day" = "1 hari";
+"room_details_disappearing_messages_1_week" = "1 minggu";
+"room_details_disappearing_messages_1_month" = "1 bulan";
 "identity_server_settings_alert_disconnect_button" = "Putuskan";
 "identity_server_settings_disconnect" = "Putuskan";
 "identity_server_settings_change" = "Ubah";

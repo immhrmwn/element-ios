@@ -3969,9 +3969,12 @@ SSOAuthenticationPresenterDelegate>
         return [VectorL10n roomDetailsDisappearingMessagesOff];
     }
     NSInteger sec = seconds.integerValue;
+    if (sec == 60) { return [VectorL10n roomDetailsDisappearingMessages1Minute]; }
+    if (sec == 5 * 60) { return [VectorL10n roomDetailsDisappearingMessages5Minutes]; }
+    if (sec == 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages1Hour]; }
     if (sec == 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages1Day]; }
-    if (sec == 7 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages7Days]; }
-    if (sec == 30 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages30Days]; }
+    if (sec == 7 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages1Week]; }
+    if (sec == 30 * 24 * 60 * 60) { return [VectorL10n roomDetailsDisappearingMessages1Month]; }
     return [VectorL10n roomDetailsDisappearingMessagesOff];
 }
 
@@ -3994,13 +3997,22 @@ SSOAuthenticationPresenterDelegate>
     [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessagesOff]
                                                style:UIAlertActionStyleDefault
                                              handler:^(UIAlertAction * _Nonnull action) { actionBlock(nil); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Minute]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(60)); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages5Minutes]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(5 * 60)); }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Hour]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(60 * 60)); }]];
     [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Day]
                                                style:UIAlertActionStyleDefault
                                              handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(24 * 60 * 60)); }]];
-    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages7Days]
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Week]
                                                style:UIAlertActionStyleDefault
                                              handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(7 * 24 * 60 * 60)); }]];
-    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages30Days]
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Month]
                                                style:UIAlertActionStyleDefault
                                              handler:^(UIAlertAction * _Nonnull action) { actionBlock(@(30 * 24 * 60 * 60)); }]];
     [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n cancel]

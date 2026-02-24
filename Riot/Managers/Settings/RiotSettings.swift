@@ -446,22 +446,30 @@ final class RiotSettings: NSObject {
     
     // MARK: - Disappearing messages (room retention)
     
-    /// Default retention policy for new rooms (nil = off).
+    /// Default retention policy for new rooms. When never set, defaults to 1 month. nil/0 = off.
+    private static let defaultRetentionOneMonthSeconds = 30 * 24 * 60 * 60
+
     var defaultRoomRetentionPolicy: RoomRetentionPolicy? {
         get {
-            guard let seconds = RiotSettings.defaults.object(forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds) as? Int else { return nil }
+            guard let raw = RiotSettings.defaults.object(forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds) else {
+                // Never set: use app default 1 month
+                return RoomRetentionPolicy(maxLifetimeSeconds: RiotSettings.defaultRetentionOneMonthSeconds)
+            }
+            guard let seconds = raw as? Int else { return nil }
+            if seconds <= 0 { return nil }
             return RoomRetentionPolicy(maxLifetimeSeconds: seconds)
         }
         set {
             if let policy = newValue {
                 RiotSettings.defaults.set(policy.maxLifetimeSeconds, forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds)
             } else {
-                RiotSettings.defaults.removeObject(forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds)
+                // Store 0 for "off" so we can distinguish from "never set" (default 1 month)
+                RiotSettings.defaults.set(0, forKey: UserDefaultsKeys.defaultRoomRetentionPolicySeconds)
             }
         }
     }
-    
-    /// Obj-C bridge: Default retention in seconds for new rooms. nil or 0 = off.
+
+    /// Obj-C bridge: Default retention in seconds for new rooms. nil or 0 = off. When never set, returns 1 month.
     @objc func defaultRoomRetentionPolicySeconds() -> NSNumber? {
         guard let policy = defaultRoomRetentionPolicy, policy.maxLifetimeSeconds > 0 else { return nil }
         return NSNumber(value: policy.maxLifetimeSeconds)
