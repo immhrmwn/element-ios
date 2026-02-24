@@ -46,6 +46,12 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
     BOOL hasAppearedOnce;
     
     /**
+     YES when a bubbles table reload has been scheduled but not yet executed.
+     Used to coalesce multiple rapid dataSource:didCellChange: calls into a single UI update.
+     */
+    BOOL hasPendingBubblesReload;
+    
+    /**
      YES if scrolling to bottom is in progress
      */
     BOOL isScrollingToBottom;
@@ -2663,41 +2669,54 @@ static const CGFloat kCellVisibilityMinimumHeight = 8.0;
 
 - (void)dataSource:(MXKDataSource *)dataSource didCellChange:(id)changes
 {
-    UIApplication *sharedApplication = [UIApplication performSelector:@selector(sharedApplication)];
-    if (sharedApplication && sharedApplication.applicationState != UIApplicationStateActive)
+    // Coalesce multiple rapid didCellChange calls into a single UI update to reduce
+    // table reloads during heavy activity (e.g. message spam).
+    if (hasPendingBubblesReload)
     {
-        // Do nothing at the UI level if the application do a sync in background
         return;
     }
-
-    if (isPaginationInProgress)
-    {
-        // Ignore these changes, the table will be full updated at the end of pagination.
-        return;
-    }
+    hasPendingBubblesReload = YES;
     
-    if (self.attachmentsViewer)
-    {
-        // Refresh the current attachments list without changing the current displayed attachment (see focus = nil).
-        NSArray *attachmentsWithThumbnail = self.roomDataSource.attachmentsWithThumbnail;
-        [self.attachmentsViewer displayAttachments:attachmentsWithThumbnail focusOn:nil];
-    }
-    
-    self.bubbleTableViewDisplayInTransition = YES;
-
-    CGPoint contentOffset = self.bubblesTableView.contentOffset;
-
-    BOOL hasScrolledToTheBottom = [self reloadBubblesTable:YES];
-
-    // If the user is scrolling while we reload the data for a new incoming message for example,
-    // there will be a jump in the table view display.
-    // Resetting the contentOffset after the reload fixes the issue.
-    if (hasScrolledToTheBottom == NO)
-    {
-        [self setBubbleTableViewContentOffset:contentOffset animated:NO];
-    }
-    
-    self.bubbleTableViewDisplayInTransition = NO;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIApplication *sharedApplication = [UIApplication performSelector:@selector(sharedApplication)];
+        if (sharedApplication && sharedApplication.applicationState != UIApplicationStateActive)
+        {
+            // Do nothing at the UI level if the application does a sync in background
+            self->hasPendingBubblesReload = NO;
+            return;
+        }
+        
+        if (self->isPaginationInProgress)
+        {
+            // Ignore these changes, the table will be fully updated at the end of pagination.
+            self->hasPendingBubblesReload = NO;
+            return;
+        }
+        
+        if (self.attachmentsViewer)
+        {
+            // Refresh the current attachments list without changing the current displayed attachment (see focus = nil).
+            NSArray *attachmentsWithThumbnail = self.roomDataSource.attachmentsWithThumbnail;
+            [self.attachmentsViewer displayAttachments:attachmentsWithThumbnail focusOn:nil];
+        }
+        
+        self.bubbleTableViewDisplayInTransition = YES;
+        
+        CGPoint contentOffset = self.bubblesTableView.contentOffset;
+        
+        BOOL hasScrolledToTheBottom = [self reloadBubblesTable:YES];
+        
+        // If the user is scrolling while we reload the data for a new incoming message for example,
+        // there will be a jump in the table view display.
+        // Resetting the contentOffset after the reload fixes the issue.
+        if (hasScrolledToTheBottom == NO)
+        {
+            [self setBubbleTableViewContentOffset:contentOffset animated:NO];
+        }
+        
+        self.bubbleTableViewDisplayInTransition = NO;
+        self->hasPendingBubblesReload = NO;
+    });
 }
 
 - (void)dataSource:(MXKDataSource *)dataSource didStateChange:(MXKDataSourceState)state
