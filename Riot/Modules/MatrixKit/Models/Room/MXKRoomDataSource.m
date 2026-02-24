@@ -3276,6 +3276,16 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
 
                 for (MXKQueuedEvent *queuedEvent in self->eventsToProcessSnapshot)
                 {
+                    // Hide timeline events before login time (client-side filter when syncWithEmptyRoomTimeline).
+                    if (BuildSettings.syncWithEmptyRoomTimeline && self.mxSession.myUser.userId)
+                    {
+                        NSNumber *sessionStartMs = [RiotSettings.shared sessionStartTimestampMsForUserId:self.mxSession.myUser.userId];
+                        if (sessionStartMs != nil && queuedEvent.event.originServerTs < sessionStartMs.unsignedLongLongValue)
+                        {
+                            continue;
+                        }
+                    }
+
                     @synchronized (self->eventIdToBubbleMap)
                     {
                         //  Check whether the event processed before

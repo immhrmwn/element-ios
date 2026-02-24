@@ -441,6 +441,9 @@ final class BuildSettings: NSObject {
     /// Whether to show the spaces selector button in the All Chats toolbar (opens space modal).
     static let showSpaceSelectorButton = false
 
+    /// When true, first sync after login uses timeline limit 0 so chat history is empty once; next app open loads messages normally.
+    static let syncWithEmptyRoomTimeline = true
+
     // MARK: - QR Login
     
     /// Flag indicating whether the QR login enabled from login screen

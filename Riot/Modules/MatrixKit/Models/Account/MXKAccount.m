@@ -77,6 +77,9 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
     id NSCurrentLocaleDidChangeNotificationObserver;
     
     MXPusher *currentPusher;
+
+    /// When syncWithEmptyRoomTimeline is used, filter to switch to after first sync so next opens use normal timeline.
+    MXFilterJSONModel *pendingNormalSyncFilter;
 }
 
 /// Will be true if the session is not in a pauseable state or we requested for the session to pause but not finished yet. Will be reverted to false again after `resume` called.
@@ -900,7 +903,17 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
 - (void)closeSession:(BOOL)clearStore
 {
     MXLogDebug(@"[MXKAccount] closeSession (%u)", clearStore);
-    
+
+    if (clearStore && BuildSettings.syncWithEmptyRoomTimeline)
+    {
+        [self.others removeObjectForKey:@"hasCompletedInitialEmptySync"];
+        if (self.mxCredentials.userId)
+        {
+            [RiotSettings.shared clearSessionStartTimestampForUserId:self.mxCredentials.userId];
+        }
+        [[MXKAccountManager sharedManager] saveAccounts];
+    }
+
     if (NSCurrentLocaleDidChangeNotificationObserver)
     {
         [[NSNotificationCenter defaultCenter] removeObserver:NSCurrentLocaleDidChangeNotificationObserver];
@@ -1635,6 +1648,13 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
                 return;
             }
 
+            // Set login time before first sync so timeline can hide messages before this (client-side filter when syncWithEmptyRoomTimeline). Only on first sync (no token) so reopening app does not reset it.
+            if (BuildSettings.syncWithEmptyRoomTimeline && self.mxCredentials.userId && !self.mxSession.store.eventStreamToken)
+            {
+                uint64_t nowMs = (uint64_t)([[NSDate date] timeIntervalSince1970] * 1000);
+                [RiotSettings.shared setSessionStartTimestampMs:nowMs forUserId:self.mxCredentials.userId];
+            }
+
             // Launch mxSession
             MXWeakify(self);
             [self.mxSession startWithSyncFilter:syncFilter onServerSyncDone:^{
@@ -1644,6 +1664,24 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
 
                 [self setUserPresence:self.preferredSyncPresence andStatusMessage:nil completion:nil];
 
+                // If we used empty timeline only for login, switch to normal filter so next sync / app open loads messages.
+                if (self->pendingNormalSyncFilter)
+                {
+                    MXFilterJSONModel *normalFilter = self->pendingNormalSyncFilter;
+                    self->pendingNormalSyncFilter = nil;
+                    [self.mxSession setFilter:normalFilter success:^(NSString *newFilterId) {
+                        self.mxSession.store.syncFilterId = newFilterId;
+                        if ([self.mxSession.store respondsToSelector:@selector(commit)])
+                        {
+                            [self.mxSession.store commit];
+                        }
+                        self.others[@"hasCompletedInitialEmptySync"] = @YES;
+                        [[MXKAccountManager sharedManager] saveAccounts];
+                        MXLogDebug(@"[MXKAccount] Switched to normal sync filter after first sync (empty timeline only on login).");
+                    } failure:^(NSError *error) {
+                        MXLogWarning(@"[MXKAccount] Failed to switch to normal sync filter: %@", error);
+                    }];
+                }
             } failure:^(NSError *error) {
                 MXStrongifyAndReturnIfNil(self);
 
@@ -2114,32 +2152,50 @@ static NSArray<NSNumber*> *initialSyncSilentErrorsHTTPStatusCodes;
 {
     MXFilterJSONModel *syncFilter;
     NSUInteger limit = 10;
-    
-    // Define a message limit for /sync requests that is high enough so that
-    // a full page of room messages can be displayed without an additional
-    // server request.
 
-    // This limit value depends on the device screen size. So, the rough rule is:
-    //    - use 10 for small phones (5S/SE)
-    //    - use 15 for phones (6/6S/7/8)
-    //    - use 20 for phablets (.Plus/X/XR/XS/XSMax)
-    //    - use 30 for iPads
+    // Device-based limit for normal sync (used when not empty-timeline or when building filter to switch to after first sync).
+    NSUInteger normalLimit = 10;
     UIUserInterfaceIdiom userInterfaceIdiom = [[UIDevice currentDevice] userInterfaceIdiom];
     if (userInterfaceIdiom == UIUserInterfaceIdiomPhone)
     {
         CGFloat screenHeight = [[UIScreen mainScreen] nativeBounds].size.height;
         if (screenHeight == 1334)   // 6/6S/7/8 screen height
         {
-            limit = 15;
+            normalLimit = 15;
         }
         else if (screenHeight > 1334)
         {
-            limit = 20;
+            normalLimit = 20;
         }
     }
     else if (userInterfaceIdiom == UIUserInterfaceIdiomPad)
     {
-        limit = 30;
+        normalLimit = 30;
+    }
+
+    // Empty timeline only on first sync after login. Use persistent flag per account so it works even when store already has eventStreamToken from disk; also use limit 0 when store has no token (fresh store).
+    id completedFlag = self.others[@"hasCompletedInitialEmptySync"];
+    BOOL hasCompletedInitialEmptySync = [completedFlag isKindOfClass:[NSNumber class]] && [(NSNumber *)completedFlag boolValue];
+    BOOL useEmptyTimelineForLoginOnly = BuildSettings.syncWithEmptyRoomTimeline && (!hasCompletedInitialEmptySync || !mxSession.store.eventStreamToken);
+    if (useEmptyTimelineForLoginOnly)
+    {
+        limit = 0;
+        // Build the normal filter to switch to after first sync completes, so next sync / app open uses normal timeline.
+        MXFilterJSONModel *normalFilter;
+        if (syncWithLazyLoadOfRoomMembers)
+        {
+            normalFilter = [MXFilterJSONModel syncFilterForLazyLoadingWithMessageLimit:normalLimit unreadThreadNotifications:supportsNotificationsForThreads];
+        }
+        else
+        {
+            normalFilter = [MXFilterJSONModel syncFilterWithMessageLimit:normalLimit unreadThreadNotifications:supportsNotificationsForThreads];
+        }
+        pendingNormalSyncFilter = normalFilter;
+    }
+    else
+    {
+        limit = normalLimit;
+        pendingNormalSyncFilter = nil;
     }
     
     // Set that limit in the filter

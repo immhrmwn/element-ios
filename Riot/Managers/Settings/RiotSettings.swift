@@ -36,6 +36,8 @@ final class RiotSettings: NSObject {
         static let previousRetentionPolicyBeforeOff = "previousRetentionPolicyBeforeOff"
         static let retentionOffTimestamps = "retentionOffTimestamps"
         static let defaultRoomRetentionPolicySeconds = "defaultRoomRetentionPolicySeconds"
+        /// Per-user session start timestamp (ms) for hiding timeline before login when syncWithEmptyRoomTimeline is used.
+        static let sessionStartTimestampMsPerUserId = "sessionStartTimestampMsPerUserId"
     }
     
     static let shared = RiotSettings()
@@ -483,7 +485,28 @@ final class RiotSettings: NSObject {
             defaultRoomRetentionPolicy = nil
         }
     }
-    
+
+    // MARK: - Session start timestamp (hide timeline before login)
+
+    /// Session start timestamp in ms (origin_server_ts) for the given user. When set, timeline events before this time are hidden.
+    @objc func sessionStartTimestampMs(forUserId userId: String) -> NSNumber? {
+        guard let dict = RiotSettings.defaults.dictionary(forKey: UserDefaultsKeys.sessionStartTimestampMsPerUserId),
+              let value = dict[userId] as? Double else { return nil }
+        return NSNumber(value: value)
+    }
+
+    @objc func setSessionStartTimestampMs(_ ms: UInt64, forUserId userId: String) {
+        var dict = RiotSettings.defaults.dictionary(forKey: UserDefaultsKeys.sessionStartTimestampMsPerUserId) as? [String: Double] ?? [:]
+        dict[userId] = Double(ms)
+        RiotSettings.defaults.set(dict, forKey: UserDefaultsKeys.sessionStartTimestampMsPerUserId)
+    }
+
+    @objc func clearSessionStartTimestamp(forUserId userId: String) {
+        var dict = RiotSettings.defaults.dictionary(forKey: UserDefaultsKeys.sessionStartTimestampMsPerUserId) as? [String: Double] ?? [:]
+        dict.removeValue(forKey: userId)
+        RiotSettings.defaults.set(dict, forKey: UserDefaultsKeys.sessionStartTimestampMsPerUserId)
+    }
+
     /// Returns true if we have a stored value for this room (including explicit "off" = 0).
     func hasRoomRetentionStoredValue(for roomID: String) -> Bool {
         guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.roomRetentionPolicies),
