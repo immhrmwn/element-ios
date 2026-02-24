@@ -98,10 +98,11 @@ Please see LICENSE in the repository root for full details.
     }
 
     // Prepare its data source
-    ContactsDataSource *dataSource = [[ContactsDataSource alloc] initWithMatrixSession:self.mainSession]; // TO TEST
+    ContactsDataSource *dataSource = [[ContactsDataSource alloc] initWithMatrixSession:self.mainSession];
     dataSource.areSectionsShrinkable = YES;
     dataSource.displaySearchInputInContactsList = YES;
-    dataSource.forceMatrixIdInDisplayName = YES;
+    // In the start chat screen, show only display names (no Matrix IDs).
+    dataSource.forceMatrixIdInDisplayName = NO;
     // Add a plus icon to the contact cell when a search session is in progress,
     // in order to make it more understandable for the end user.
     dataSource.contactCellAccessoryImage = [AssetImages.plusIcon.image vc_tintedImageUsingColor:ThemeService.shared.theme.textPrimaryColor];
