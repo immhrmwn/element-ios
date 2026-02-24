@@ -498,18 +498,17 @@ Please see LICENSE in the repository root for full details.
 // Return the raw height of the provided text by removing any vertical margin/inset and constraining the width.
 - (CGFloat)rawTextHeight: (NSAttributedString*)attributedText withMaxWidth:(CGFloat)maxTextViewWidth
 {
-    __block CGSize textSize;
     if ([NSThread currentThread] != [NSThread mainThread])
     {
-        dispatch_sync(dispatch_get_main_queue(), ^{
-            textSize = [self textContentSize:attributedText removeVerticalInset:YES maxTextViewWidth:maxTextViewWidth];
+        MXLogDebug(@"[MXKRoomBubbleCellData] rawTextHeight called on wrong thread");
+        // Schedule a main-thread recomputation for layout safety, but avoid blocking the current thread.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            (void)[self textContentSize:attributedText removeVerticalInset:YES maxTextViewWidth:maxTextViewWidth];
         });
-    }
-    else
-    {
-        textSize = [self textContentSize:attributedText removeVerticalInset:YES maxTextViewWidth:maxTextViewWidth];
+        return 0;
     }
     
+    CGSize textSize = [self textContentSize:attributedText removeVerticalInset:YES maxTextViewWidth:maxTextViewWidth];
     return textSize.height;
 }
 
@@ -805,7 +804,8 @@ Please see LICENSE in the repository root for full details.
             // Here the bubble is a text message
             if ([NSThread currentThread] != [NSThread mainThread])
             {
-                dispatch_sync(dispatch_get_main_queue(), ^{
+                MXLogDebug(@"[MXKRoomBubbleCellData] contentSize (text) called on wrong thread");
+                dispatch_async(dispatch_get_main_queue(), ^{
                     self->_contentSize = [self textContentSize:self.attributedTextMessage removeVerticalInset:NO];
                 });
             }
@@ -867,7 +867,8 @@ Please see LICENSE in the repository root for full details.
             // Return suitable content size of a text view to display the file name (available in text message). 
             if ([NSThread currentThread] != [NSThread mainThread])
             {
-                dispatch_sync(dispatch_get_main_queue(), ^{
+                MXLogDebug(@"[MXKRoomBubbleCellData] contentSize (file/audio) called on wrong thread");
+                dispatch_async(dispatch_get_main_queue(), ^{
                     self->_contentSize = [self textContentSize:self.attributedTextMessage removeVerticalInset:NO];
                 });
             }

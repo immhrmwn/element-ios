@@ -325,7 +325,7 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
         if ([NSThread currentThread] != [NSThread mainThread])
         {
             MXLogDebug(@"[RoomBubbleCellData] prepareBubbleComponentsPosition called on wrong thread");
-            dispatch_sync(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_main_queue(), ^{
                 [self refreshBubbleComponentsPosition];
             });
         }
@@ -631,7 +631,7 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
             if ([NSThread currentThread] != [NSThread mainThread])
             {
                 MXLogDebug(@"[RoomBubbleCellData] attributedTextMessage called on wrong thread");
-                dispatch_sync(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_main_queue(), ^{
                     [self buildAttributedString];
                 });
             }
@@ -808,8 +808,8 @@ NSString *const URLPreviewDidUpdateNotification = @"URLPreviewDidUpdateNotificat
         // which takes place on the main thread.
         if ([NSThread currentThread] != [NSThread mainThread])
         {
-            MXLogDebug(@"[RoomBubbleCellData] prepareBubbleComponentsPosition called on wrong thread");
-            dispatch_sync(dispatch_get_main_queue(), ^{
+            MXLogDebug(@"[RoomBubbleCellData] updateAdditionalContentHeightIfNeeded called on wrong thread");
+            dispatch_async(dispatch_get_main_queue(), ^{
                 updateAdditionalHeight();
             });
         }
