@@ -80,6 +80,9 @@ Please see LICENSE in the repository root for full details.
     // Assign itself as delegate
     self.contactsTableViewControllerDelegate = self;
     
+    // Hide the “Find your contacts” footer container in the Start Chat screen.
+    self.disableFindYourContactsFooter = YES;
+    
     self.screenTracker = [[AnalyticsScreenTracker alloc] initWithScreen:AnalyticsScreenStartChat];
 }
 

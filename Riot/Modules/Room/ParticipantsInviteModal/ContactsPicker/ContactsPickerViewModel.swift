@@ -85,6 +85,8 @@ class ContactsPickerViewModel: NSObject, ContactsPickerViewModelProtocol {
 
         // Set delegate to handle action on member (start chat, mention)
         contactsViewController.contactsTableViewControllerDelegate = self
+        // Hide the “Find your contacts” footer/banner in the invite flow.
+        contactsViewController.disableFindYourContactsFooter = true
         
         // Prepare its data source
         guard let contactsDataSource = ContactsDataSource(matrixSession: room.mxSession) else {
@@ -93,7 +95,8 @@ class ContactsPickerViewModel: NSObject, ContactsPickerViewModelProtocol {
         }
         contactsDataSource.areSectionsShrinkable = true
         contactsDataSource.displaySearchInputInContactsList = true
-        contactsDataSource.forceMatrixIdInDisplayName = true
+        // In the room invite picker, show only display names (no Matrix IDs suffix).
+        contactsDataSource.forceMatrixIdInDisplayName = false
         
         // Add a plus icon to the contact cell in the contacts picker, in order to make it more understandable for the end user.
         contactsDataSource.contactCellAccessoryImage = Asset.Images.plusIcon.image.vc_tintedImage(usingColor: ThemeService.shared().theme.textPrimaryColor)
