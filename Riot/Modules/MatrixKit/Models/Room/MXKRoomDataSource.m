@@ -27,6 +27,9 @@ Please see LICENSE in the repository root for full details.
 
 const BOOL USE_THREAD_TIMELINE = YES;
 
+/** Debounce interval (seconds) for processQueuedEvents when onComplete is nil. Coalesces rapid event processing during spam. */
+static const NSTimeInterval kProcessQueuedEventsDebounceInterval = 0.1;
+
 #pragma mark - Constant definitions
 
 NSString *const kMXKRoomBubbleCellDataIdentifier = @"kMXKRoomBubbleCellDataIdentifier";
@@ -174,6 +177,16 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
      Emote slash command prefix @"/me "
      */
     NSString *emoteMessageSlashCommandPrefix;
+    
+    /**
+     Debounce timer for processQueuedEvents when onComplete is nil (coalesces rapid event processing).
+     */
+    dispatch_source_t processQueuedEventsDebounceTimer;
+    
+    /**
+     Lock for processQueuedEvents debounce timer access.
+     */
+    NSObject *processQueuedEventsDebounceLock;
 }
 
 /**
@@ -303,6 +316,7 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
         bubbles = [NSMutableArray array];
         eventsToProcess = [NSMutableArray array];
         eventIdToBubbleMap = [NSMutableDictionary dictionary];
+        processQueuedEventsDebounceLock = [NSObject new];
         
         _filterMessagesWithURL = NO;
         
@@ -510,6 +524,16 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
     currentTypingUsers = nil;
     
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXRoomInitialSyncNotification object:nil];
+    
+    // Cancel any pending debounced processQueuedEvents
+    @synchronized(processQueuedEventsDebounceLock)
+    {
+        if (processQueuedEventsDebounceTimer)
+        {
+            dispatch_source_cancel(processQueuedEventsDebounceTimer);
+            processQueuedEventsDebounceTimer = nil;
+        }
+    }
     
     @synchronized(eventsToProcess)
     {
@@ -3153,7 +3177,53 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
 {
     MXWeakify(self);
     
-    // Do the processing on the processing queue
+    // When onComplete is provided (pagination, etc.), process immediately. Otherwise debounce to coalesce rapid events (e.g. spam).
+    if (onComplete != nil)
+    {
+        @synchronized(processQueuedEventsDebounceLock)
+        {
+            if (processQueuedEventsDebounceTimer)
+            {
+                dispatch_source_cancel(processQueuedEventsDebounceTimer);
+                processQueuedEventsDebounceTimer = nil;
+            }
+        }
+        [self performProcessQueuedEventsWithCompletion:onComplete];
+    }
+    else
+    {
+        @synchronized(processQueuedEventsDebounceLock)
+        {
+            if (processQueuedEventsDebounceTimer)
+            {
+                dispatch_source_cancel(processQueuedEventsDebounceTimer);
+            }
+            __weak typeof(self) weakSelf = self;
+            dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+            processQueuedEventsDebounceTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+            dispatch_source_set_timer(processQueuedEventsDebounceTimer, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kProcessQueuedEventsDebounceInterval * NSEC_PER_SEC)), DISPATCH_TIME_FOREVER, 0);
+            dispatch_source_set_event_handler(processQueuedEventsDebounceTimer, ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                @synchronized(strongSelf->processQueuedEventsDebounceLock)
+                {
+                    if (strongSelf->processQueuedEventsDebounceTimer)
+                    {
+                        dispatch_source_cancel(strongSelf->processQueuedEventsDebounceTimer);
+                        strongSelf->processQueuedEventsDebounceTimer = nil;
+                    }
+                }
+                [strongSelf performProcessQueuedEventsWithCompletion:nil];
+            });
+            dispatch_resume(processQueuedEventsDebounceTimer);
+        }
+    }
+}
+
+- (void)performProcessQueuedEventsWithCompletion:(void (^)(NSUInteger addedHistoryCellNb, NSUInteger addedLiveCellNb))onComplete
+{
+    MXWeakify(self);
+    
     dispatch_async(MXKRoomDataSource.processingQueue, ^{
         
         MXStrongifyAndReturnIfNil(self);
