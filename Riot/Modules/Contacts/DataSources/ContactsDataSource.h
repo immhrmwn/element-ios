@@ -30,6 +30,7 @@ typedef enum : NSUInteger
 @protected
     // Section indexes
     NSInteger searchInputSection;
+    NSInteger filteredSuggestedContactsSection;
     NSInteger filteredLocalContactsSection;
     NSInteger filteredMatrixContactsSection;
     
@@ -38,6 +39,7 @@ typedef enum : NSUInteger
     
     // Search results
     NSString *currentSearchText;
+    NSMutableArray<MXKContact*> *filteredSuggestedContacts;
     NSMutableArray<MXKContact*> *filteredLocalContacts;
     NSMutableArray<MXKContact*> *filteredMatrixContacts;
 }

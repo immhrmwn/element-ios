@@ -1311,6 +1311,10 @@ public class VectorL10n: NSObject {
   public static var contactsAddressBookSection: String { 
     return VectorL10n.tr("Vector", "contacts_address_book_section") 
   }
+  /// SUGGESTIONS
+  public static var contactsSuggestionsSection: String { 
+    return VectorL10n.tr("Vector", "contacts_suggestions_section") 
+  }
   /// USER DIRECTORY (offline)
   public static var contactsUserDirectoryOfflineSection: String { 
     return VectorL10n.tr("Vector", "contacts_user_directory_offline_section") 

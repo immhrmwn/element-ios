@@ -17,6 +17,9 @@ Please see LICENSE in the repository root for full details.
 
 #define CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE 0x01
 #define CONTACTSDATASOURCE_USERDIRECTORY_BITWISE 0x02
+#define CONTACTSDATASOURCE_SUGGESTED_BITWISE 0x04
+
+#define CONTACTSDATASOURCE_SUGGESTED_CONTACTS_LIMIT 10
 
 #define CONTACTSDATASOURCE_DEFAULT_SECTION_HEADER_HEIGHT 30.0
 #define CONTACTSDATASOURCE_LOCALCONTACTS_SECTION_HEADER_HEIGHT 65.0
@@ -32,6 +35,9 @@ Please see LICENSE in the repository root for full details.
 
     // The current request to the homeserver user directory
     MXHTTPOperation *hsUserDirectoryOperation;
+    
+    // Fallback profile lookup when directory returns empty but user typed a full Matrix ID
+    MXHTTPOperation *profileLookupOperation;
     
     BOOL forceSearchResultRefresh;
     
@@ -80,6 +86,7 @@ Please see LICENSE in the repository root for full details.
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onContactManagerDidUpdate:) name:kMXKContactManagerDidUpdateMatrixContactsNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onContactManagerDidUpdate:) name:kMXKContactManagerDidUpdateLocalContactsNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onContactManagerDidUpdate:) name:kMXKContactManagerDidUpdateLocalContactMatrixIDsNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onDirectRoomsDidUpdate:) name:kMXSessionDirectRoomsDidChangeNotification object:nil];
     }
     return self;
 }
@@ -99,7 +106,9 @@ Please see LICENSE in the repository root for full details.
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXKContactManagerDidUpdateMatrixContactsNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXKContactManagerDidUpdateLocalContactsNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXKContactManagerDidUpdateLocalContactMatrixIDsNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:kMXSessionDirectRoomsDidChangeNotification object:nil];
     
+    filteredSuggestedContacts = nil;
     filteredLocalContacts = nil;
     filteredMatrixContacts = nil;
     
@@ -122,6 +131,9 @@ Please see LICENSE in the repository root for full details.
 
     [hsUserDirectoryOperation cancel];
     hsUserDirectoryOperation = nil;
+    
+    [profileLookupOperation cancel];
+    profileLookupOperation = nil;
     
     [super destroy];
 }
@@ -192,11 +204,16 @@ Please see LICENSE in the repository root for full details.
             [filteredMatrixContacts removeAllObjects];
             filteredMatrixContacts = nil;
 
-            // Cancel previous operation
+            // Cancel previous operations
             if (hsUserDirectoryOperation)
             {
                 [hsUserDirectoryOperation cancel];
                 hsUserDirectoryOperation = nil;
+            }
+            if (profileLookupOperation)
+            {
+                [profileLookupOperation cancel];
+                profileLookupOperation = nil;
             }
             
             MXWeakify(self);
@@ -217,6 +234,33 @@ Please see LICENSE in the repository root for full details.
                 self->hsUserDirectoryOperation = nil;
 
                 self->_userDirectoryState = userSearchResponse.limited ? ContactsDataSourceUserDirectoryStateLoadedButLimited : ContactsDataSourceUserDirectoryStateLoaded;
+
+                // If directory returned no results but user typed Matrix ID (full @user:server or short @user/user), try profile lookup as fallback.
+                // (Directory often omits users who have never shared a room with you, or has bugs with ID search.)
+                // Skip email - profile lookup only works with Matrix user IDs.
+                NSString *homeserver = [MXTools serverNameInMatrixIdentifier:self.mxSession.myUserId];
+                NSString *resolvedUserId = [MXTools fullUserIdFromShortUsername:searchText homeserverDomain:homeserver];
+                if (userSearchResponse.results.count == 0 &&
+                    resolvedUserId.length > 0 &&
+                    ![MXTools isEmailAddress:searchText] &&
+                    self->_ignoredContactsByMatrixId[resolvedUserId] == nil &&
+                    ![resolvedUserId isEqualToString:self.mxSession.myUserId])
+                {
+                    NSString *userIdToLookup = resolvedUserId;
+                    MXWeakify(self);
+                    self->profileLookupOperation = [self.mxSession.matrixRestClient profileForUser:userIdToLookup success:^(NSString *displayName, NSString *avatarUrl) {
+                        MXStrongifyAndReturnIfNil(self);
+                        self->profileLookupOperation = nil;
+                        NSString *name = (displayName.length ? displayName : userIdToLookup);
+                        MXKContact *contact = [[MXKContact alloc] initMatrixContactWithDisplayName:name andMatrixID:userIdToLookup];
+                        [self->filteredMatrixContacts addObject:contact];
+                        [self.delegate dataSource:self didCellChange:nil];
+                    } failure:^(NSError *error) {
+                        MXStrongifyAndReturnIfNil(self);
+                        self->profileLookupOperation = nil;
+                        // User not found or error - keep empty results, no need to notify again
+                    }];
+                }
 
                 // And inform the delegate about the update
                 [self.delegate dataSource:self didCellChange:nil];
@@ -367,6 +411,36 @@ Please see LICENSE in the repository root for full details.
     [self forceRefresh];
 }
 
+- (void)onDirectRoomsDidUpdate:(NSNotification *)notif
+{
+    [self forceRefresh];
+}
+
+- (NSMutableArray<MXKContact*>*)unfilteredSuggestedContactsArray
+{
+    NSArray *directContacts = [MXKContactManager sharedManager].directMatrixContacts;
+    if (!directContacts.count)
+    {
+        return [NSMutableArray array];
+    }
+    
+    NSMutableArray<MXKContact*> *suggested = [NSMutableArray array];
+    for (MXKContact *contact in directContacts)
+    {
+        NSString *matrixId = contact.matrixIdentifiers.firstObject;
+        if (!matrixId || _ignoredContactsByMatrixId[matrixId] || [matrixId isEqualToString:self.mxSession.myUserId])
+        {
+            continue;
+        }
+        [suggested addObject:contact];
+        if (suggested.count >= CONTACTSDATASOURCE_SUGGESTED_CONTACTS_LIMIT)
+        {
+            break;
+        }
+    }
+    return suggested;
+}
+
 - (NSMutableArray<MXKContact*>*)unfilteredLocalContactsArray
 {
     // Retrieve all the contacts obtained by splitting each local contact by contact method. This list is ordered alphabetically.
@@ -466,7 +540,7 @@ Please see LICENSE in the repository root for full details.
 {
     NSInteger count = 0;
     
-    searchInputSection = filteredLocalContactsSection = filteredMatrixContactsSection = -1;
+    searchInputSection = filteredSuggestedContactsSection = filteredLocalContactsSection = filteredMatrixContactsSection = -1;
     
     if (currentSearchText.length)
     {
@@ -484,6 +558,13 @@ Please see LICENSE in the repository root for full details.
     }
     else
     {
+        // Display suggested contacts (recent DMs) at top when search is empty
+        filteredSuggestedContacts = [self unfilteredSuggestedContactsArray];
+        if (filteredSuggestedContacts.count)
+        {
+            filteredSuggestedContactsSection = count++;
+        }
+        
         // Display by default the full address book ordered alphabetically, mixing Matrix enabled and non-Matrix enabled users.
         if (!filteredLocalContacts)
         {
@@ -497,8 +578,6 @@ Please see LICENSE in the repository root for full details.
         }
     }
     
-    
-    
     return count;
 }
 
@@ -509,6 +588,10 @@ Please see LICENSE in the repository root for full details.
     if (section == searchInputSection)
     {
         count = RiotSettings.shared.allowInviteExernalUsers ? 1 : 0;
+    }
+    else if (section == filteredSuggestedContactsSection && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_SUGGESTED_BITWISE))
+    {
+        count = filteredSuggestedContacts.count;
     }
     else if (section == filteredLocalContactsSection && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE))
     {
@@ -534,6 +617,14 @@ Please see LICENSE in the repository root for full details.
     {
         // Show what the user is typing in a cell. So that he can click on it
         contact = [[MXKContact alloc] initMatrixContactWithDisplayName:currentSearchText andMatrixID:nil];
+    }
+    else if (indexPath.section == filteredSuggestedContactsSection)
+    {
+        if (indexPath.row < filteredSuggestedContacts.count)
+        {
+            contact = filteredSuggestedContacts[indexPath.row];
+            showMatrixIdInDisplayName = self.forceMatrixIdInDisplayName ? YES : [isMultiUseNameByDisplayName[contact.displayName] isEqualToNumber:@(YES)];
+        }
     }
     else if (indexPath.section == filteredLocalContactsSection)
     {
@@ -568,7 +659,7 @@ Please see LICENSE in the repository root for full details.
         contactCell.showMatrixIdInDisplayName = showMatrixIdInDisplayName;
         
         // The search displays contacts to invite.
-        if (indexPath.section == filteredLocalContactsSection || indexPath.section == filteredMatrixContactsSection)
+        if (indexPath.section == filteredSuggestedContactsSection || indexPath.section == filteredLocalContactsSection || indexPath.section == filteredMatrixContactsSection)
         {
             // Add the right accessory view if any
             contactCell.accessoryType = self.contactCellAccessoryType;
@@ -678,6 +769,10 @@ Please see LICENSE in the repository root for full details.
     {
         mxkContact = [[MXKContact alloc] initMatrixContactWithDisplayName:currentSearchText andMatrixID:nil];
     }
+    else if (indexPath.section == filteredSuggestedContactsSection && row < filteredSuggestedContacts.count)
+    {
+        mxkContact = filteredSuggestedContacts[row];
+    }
     else if (indexPath.section == filteredLocalContactsSection && row < filteredLocalContacts.count)
     {
         mxkContact = filteredLocalContacts[row];
@@ -694,21 +789,27 @@ Please see LICENSE in the repository root for full details.
 {
     NSIndexPath *indexPath = nil;
     
-    NSUInteger index = [filteredLocalContacts indexOfObject:contact];
-    if (index != NSNotFound)
+    NSUInteger index = [filteredSuggestedContacts indexOfObject:contact];
+    if (filteredSuggestedContacts && index != NSNotFound && filteredSuggestedContactsSection != -1 && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_SUGGESTED_BITWISE))
     {
-        // if local section is collapsed there is no cell
-        if (!(shrinkedSectionsBitMask & CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE)) {
-            indexPath = [NSIndexPath indexPathForRow:index inSection:filteredLocalContactsSection];
-        }
+        indexPath = [NSIndexPath indexPathForRow:index inSection:filteredSuggestedContactsSection];
     }
     else
     {
-        index = [filteredMatrixContacts indexOfObject:contact];
-        // if matrix section is collapsed or we are not showing the matrix section(as with empty query) there is no cell
-        if (index != NSNotFound && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_USERDIRECTORY_BITWISE) && filteredMatrixContactsSection != -1)
+        index = [filteredLocalContacts indexOfObject:contact];
+        if (index != NSNotFound)
         {
-            indexPath = [NSIndexPath indexPathForRow:index inSection:filteredMatrixContactsSection];
+            if (!(shrinkedSectionsBitMask & CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE)) {
+                indexPath = [NSIndexPath indexPathForRow:index inSection:filteredLocalContactsSection];
+            }
+        }
+        else
+        {
+            index = [filteredMatrixContacts indexOfObject:contact];
+            if (index != NSNotFound && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_USERDIRECTORY_BITWISE) && filteredMatrixContactsSection != -1)
+            {
+                indexPath = [NSIndexPath indexPathForRow:index inSection:filteredMatrixContactsSection];
+            }
         }
     }
     return indexPath;
@@ -716,7 +817,7 @@ Please see LICENSE in the repository root for full details.
 
 - (CGFloat)heightForHeaderInSection:(NSInteger)section
 {
-    if (section == filteredLocalContactsSection || section == filteredMatrixContactsSection)
+    if (section == filteredSuggestedContactsSection || section == filteredLocalContactsSection || section == filteredMatrixContactsSection)
     {
         if (section == filteredLocalContactsSection && !(shrinkedSectionsBitMask & CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE))
         {
@@ -734,7 +835,12 @@ Please see LICENSE in the repository root for full details.
     NSString* title;
     NSUInteger count = 0;
     
-    if (section == filteredLocalContactsSection)
+    if (section == filteredSuggestedContactsSection)
+    {
+        count = filteredSuggestedContacts.count;
+        title = [VectorL10n contactsSuggestionsSection];
+    }
+    else if (section == filteredLocalContactsSection)
     {
         count = filteredLocalContacts.count;
         title = [VectorL10n contactsAddressBookSection];
@@ -805,20 +911,17 @@ Please see LICENSE in the repository root for full details.
 
     if (_areSectionsShrinkable)
     {
-        if (section == filteredLocalContactsSection)
+        if (section == filteredSuggestedContactsSection && filteredSuggestedContacts.count)
+        {
+            sectionBitwise = CONTACTSDATASOURCE_SUGGESTED_BITWISE;
+        }
+        else if (section == filteredLocalContactsSection)
         {
             sectionBitwise = CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE;
         }
-        else //if (section == filteredMatrixContactsSection)
+        else if (section == filteredMatrixContactsSection && currentSearchText.length && filteredMatrixContacts.count)
         {
-            if (currentSearchText.length)
-            {
-                // This section is collapsable only if it is not empty
-                if (filteredMatrixContacts.count)
-                {
-                    sectionBitwise = CONTACTSDATASOURCE_USERDIRECTORY_BITWISE;
-                }
-            }
+            sectionBitwise = CONTACTSDATASOURCE_USERDIRECTORY_BITWISE;
         }
     }
     
@@ -898,7 +1001,7 @@ Please see LICENSE in the repository root for full details.
 {
     // Return the section header used when the section is shrinked
     NSInteger savedShrinkedSectionsBitMask = shrinkedSectionsBitMask;
-    shrinkedSectionsBitMask = CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE | CONTACTSDATASOURCE_USERDIRECTORY_BITWISE;
+    shrinkedSectionsBitMask = CONTACTSDATASOURCE_SUGGESTED_BITWISE | CONTACTSDATASOURCE_LOCALCONTACTS_BITWISE | CONTACTSDATASOURCE_USERDIRECTORY_BITWISE;
     
     UIView *stickyHeader = [self viewForHeaderInSection:section withFrame:frame inTableView:tableView];
     

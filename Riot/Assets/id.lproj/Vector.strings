@@ -211,6 +211,7 @@
 
 // Contacts
 "contacts_address_book_section" = "KONTAK LOKAL";
+"contacts_suggestions_section" = "SARAN";
 "directory_cell_description" = "%tu ruangan";
 
 // Directory

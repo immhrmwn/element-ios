@@ -438,6 +438,7 @@ Tap the + to start adding people.";
 
 // Contacts
 "contacts_address_book_section" = "LOCAL CONTACTS";
+"contacts_suggestions_section" = "SUGGESTIONS";
 "contacts_address_book_matrix_users_toggle" = "Matrix users only";
 "contacts_address_book_no_identity_server" = "No identity server configured";
 "contacts_address_book_no_contact" = "No local contacts";
