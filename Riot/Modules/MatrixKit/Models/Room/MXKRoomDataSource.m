@@ -3674,7 +3674,10 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
             // Block MXKRoomDataSource.processingQueue while the processing is finalised on the main thread
             dispatch_group_wait(dispatchGroup, DISPATCH_TIME_FOREVER);
             
-            dispatch_sync(dispatch_get_main_queue(), ^{
+            // Use dispatch_async + semaphore instead of dispatch_sync(main) to avoid blocking main thread
+            // from a background queue (reduces deadlock/ANR risk when main is busy during message spam)
+            dispatch_semaphore_t mainWorkDone = dispatch_semaphore_create(0);
+            dispatch_async(dispatch_get_main_queue(), ^{
                 // Check whether self has not been reloaded or destroyed
                 if (self.state == MXKDataSourceStateReady && self->bubblesSnapshot)
                 {
@@ -3733,7 +3736,10 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
                 {
                     onComplete(addedHistoryCellCount, addedLiveCellCount);
                 }
+                
+                dispatch_semaphore_signal(mainWorkDone);
             });
+            dispatch_semaphore_wait(mainWorkDone, DISPATCH_TIME_FOREVER);
         }
         else
         {
