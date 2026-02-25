@@ -416,26 +416,26 @@ final class RiotSettings: NSObject {
     /// How long to keep cached messages locally before automatic cleanup. "Forever" = no automatic cleanup.
     @objc enum KeepMessagesFor: Int, CaseIterable {
         case forever = 0
-        case oneWeek = 1
-        case oneMonth = 2
-        case threeMonths = 3
-        case sixMonths = 4
-        case oneYear = 5
+        case oneMinute = 1
+        case oneHour = 2
+        case oneDay = 3
+        case oneWeek = 4
+        case oneMonth = 5
         
         /// Duration in seconds after which to run cleanup. nil for forever.
         var cleanupIntervalSeconds: TimeInterval? {
             switch self {
             case .forever: return nil
+            case .oneMinute: return 60
+            case .oneHour: return 60 * 60
+            case .oneDay: return 24 * 60 * 60
             case .oneWeek: return 7 * 24 * 60 * 60
             case .oneMonth: return 30 * 24 * 60 * 60
-            case .threeMonths: return 90 * 24 * 60 * 60
-            case .sixMonths: return 180 * 24 * 60 * 60
-            case .oneYear: return 365 * 24 * 60 * 60
             }
         }
     }
     
-    @UserDefault(key: UserDefaultsKeys.keepMessagesFor, defaultValue: 0, storage: defaults)
+    @UserDefault(key: UserDefaultsKeys.keepMessagesFor, defaultValue: 5, storage: defaults)
     var keepMessagesForRaw: Int
     
     var keepMessagesFor: KeepMessagesFor {

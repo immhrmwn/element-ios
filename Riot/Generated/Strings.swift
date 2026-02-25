@@ -6911,6 +6911,18 @@ public class VectorL10n: NSObject {
   public static var screenStorageManagementKeepMessagesHeader: String { 
     return VectorL10n.tr("Vector", "screen_storage_management_keep_messages_header") 
   }
+  /// 1 day
+  public static var screenStorageManagementKeepOneDay: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_day") 
+  }
+  /// 1 hour
+  public static var screenStorageManagementKeepOneHour: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_hour") 
+  }
+  /// 1 minute
+  public static var screenStorageManagementKeepOneMinute: String { 
+    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_minute") 
+  }
   /// 1 month
   public static var screenStorageManagementKeepOneMonth: String { 
     return VectorL10n.tr("Vector", "screen_storage_management_keep_one_month") 
@@ -6918,18 +6930,6 @@ public class VectorL10n: NSObject {
   /// 1 week
   public static var screenStorageManagementKeepOneWeek: String { 
     return VectorL10n.tr("Vector", "screen_storage_management_keep_one_week") 
-  }
-  /// 1 year
-  public static var screenStorageManagementKeepOneYear: String { 
-    return VectorL10n.tr("Vector", "screen_storage_management_keep_one_year") 
-  }
-  /// 6 months
-  public static var screenStorageManagementKeepSixMonths: String { 
-    return VectorL10n.tr("Vector", "screen_storage_management_keep_six_months") 
-  }
-  /// 3 months
-  public static var screenStorageManagementKeepThreeMonths: String { 
-    return VectorL10n.tr("Vector", "screen_storage_management_keep_three_months") 
   }
   /// Loading…
   public static var screenStorageManagementLoading: String { 

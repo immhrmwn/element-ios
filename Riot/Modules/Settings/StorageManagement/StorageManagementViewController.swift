@@ -207,23 +207,6 @@ final class StorageManagementViewController: UITableViewController, Themable {
             cell.mxkButton.setTitleColor(theme.tintColor, for: .normal)
             cell.mxkButton.setTitleColor(theme.tintColor.withAlphaComponent(0.6), for: .disabled)
             cell.mxkButton.titleLabel?.font = .systemFont(ofSize: 17)
-            cell.mxkButton.backgroundColor = .clear
-            cell.mxkButton.layer.cornerRadius = 16
-            cell.mxkButton.layer.borderWidth = 2
-            let borderColor = isClearing ? theme.tintColor.withAlphaComponent(0.4) : theme.tintColor
-            cell.mxkButton.layer.borderColor = borderColor.cgColor
-            // Full width
-            cell.mxkButton.translatesAutoresizingMaskIntoConstraints = false
-            let padding = tableView.vc_separatorInset.left
-            NSLayoutConstraint.deactivate(cell.contentView.constraints.filter {
-                ($0.firstItem as? UIView) === cell.mxkButton || ($0.secondItem as? UIView) === cell.mxkButton
-            })
-            NSLayoutConstraint.activate([
-                cell.mxkButton.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: padding),
-                cell.mxkButton.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -padding),
-                cell.mxkButton.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
-                cell.mxkButton.heightAnchor.constraint(equalToConstant: 48)
-            ])
             cell.mxkButton.removeTarget(nil, action: nil, for: .allEvents)
             cell.mxkButton.addTarget(self, action: #selector(clearCacheTapped), for: .touchUpInside)
             cell.mxkButton.isEnabled = !isClearing
@@ -252,11 +235,11 @@ final class StorageManagementViewController: UITableViewController, Themable {
     private func titleForKeepMessagesOption(_ option: RiotSettings.KeepMessagesFor) -> String {
         switch option {
         case .forever: return VectorL10n.screenStorageManagementKeepForever
+        case .oneMinute: return VectorL10n.screenStorageManagementKeepOneMinute
+        case .oneHour: return VectorL10n.screenStorageManagementKeepOneHour
+        case .oneDay: return VectorL10n.screenStorageManagementKeepOneDay
         case .oneWeek: return VectorL10n.screenStorageManagementKeepOneWeek
         case .oneMonth: return VectorL10n.screenStorageManagementKeepOneMonth
-        case .threeMonths: return VectorL10n.screenStorageManagementKeepThreeMonths
-        case .sixMonths: return VectorL10n.screenStorageManagementKeepSixMonths
-        case .oneYear: return VectorL10n.screenStorageManagementKeepOneYear
         }
     }
     

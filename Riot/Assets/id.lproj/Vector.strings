@@ -154,11 +154,11 @@
 "screen_storage_management_keep_messages_for_label" = "Simpan pesan selama:";
 "screen_storage_management_keep_messages_footer" = "Cache lokal dibersihkan setelah periode ini biar hemat tempat. Pesan akan unduh lagi pas kamu buka room.";
 "screen_storage_management_keep_forever" = "Selamanya";
+"screen_storage_management_keep_one_minute" = "1 menit";
+"screen_storage_management_keep_one_hour" = "1 jam";
+"screen_storage_management_keep_one_day" = "1 hari";
 "screen_storage_management_keep_one_week" = "1 minggu";
 "screen_storage_management_keep_one_month" = "1 bulan";
-"screen_storage_management_keep_three_months" = "3 bulan";
-"screen_storage_management_keep_six_months" = "6 bulan";
-"screen_storage_management_keep_one_year" = "1 tahun";
 "screen_storage_management_manual_header" = "Hapus pesan sekarang";
 "screen_storage_management_manual_footer" = "Cache pesan dan media di device ini akan dihapus. Akun, kunci enkripsi, dan daftar room tetap aman. Pesan akan unduh lagi pas buka room.";
 "screen_storage_management_delete_now_button" = "Bersihkan cache sekarang";
