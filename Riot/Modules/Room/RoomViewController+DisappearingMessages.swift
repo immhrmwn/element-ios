@@ -38,17 +38,11 @@ import MatrixSDK
     
     private func disappearingMessagesBannerDurationText() -> String? {
         guard let roomId = roomDataSource?.roomId else { return nil }
-        
         var policySeconds: NSNumber? = RiotSettings.shared.roomRetentionMaxLifetimeSeconds(forRoomId: roomId)
-        let source: String
-        if policySeconds != nil {
-            source = "RiotSettings"
-        } else {
-            let room = mainSession?.room(withRoomId: roomId)
-            policySeconds = room?.dangerousSyncState?.vc_maxLifetimeSeconds()
-            source = "roomState"
+        if policySeconds == nil || policySeconds?.intValue ?? 0 <= 0 {
+            policySeconds = mainSession?.room(withRoomId: roomId)?.dangerousSyncState?.vc_maxLifetimeSeconds()
         }
-        MXLog.debug("[RoomVC] bannerDurationText roomId=\(roomId) policySeconds=\(policySeconds?.stringValue ?? "nil") source=\(source)")
+        MXLog.debug("[RoomVC] bannerDurationText roomId=\(roomId) policySeconds=\(policySeconds?.stringValue ?? "nil")")
         guard let seconds = policySeconds?.intValue, seconds > 0 else { return nil }
         
         switch seconds {

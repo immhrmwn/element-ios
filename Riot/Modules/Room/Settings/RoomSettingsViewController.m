@@ -573,23 +573,20 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
         [tmpSections addObject:sectionHistory];
     }
     
-    // Disappearing messages (m.room.retention) - show if user can send state events
+    // Disappearing messages (m.room.retention) - syncs to server; deletion per-device based on read time
     {
         MXRoomPowerLevels *powerLevels = [mxRoomState powerLevels];
         NSInteger oneSelfPowerLevel = [mxRoomState powerLevelOfUserWithUserID:self.mainSession.myUser.userId];
-        if (oneSelfPowerLevel >= [powerLevels minimumPowerLevelForSendingEventAsStateEvent:kMXEventTypeStringRoomRetention])
+        if (powerLevels && oneSelfPowerLevel >= [powerLevels minimumPowerLevelForSendingEventAsStateEvent:kMXEventTypeStringRoomRetention])
         {
-            // Sync from server to local so timeline filtering has the policy (only when we don't have a stored value)
+            // Sync from server to local (when no stored value)
             NSNumber *serverSeconds = [mxRoomState vc_maxLifetimeSeconds];
             BOOL hasStoredValue = [RiotSettings.shared hasRoomRetentionStoredValueForRoomId:mxRoom.roomId];
             BOOL noPendingChanges = (updatedItemsDict[kRoomSettingsDisappearingMessagesKey] == nil);
-            NSNumber *storedSeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:mxRoom.roomId];
-            MXLogDebug(@"[RoomSettings] reloadConfiguration retention: roomId=%@ serverSeconds=%@ storedSeconds=%@ hasStored=%@ noPending=%@", mxRoom.roomId, serverSeconds, storedSeconds, @(hasStoredValue), @(noPendingChanges));
             if (noPendingChanges && !hasStoredValue)
             {
-                if (serverSeconds != nil)
+                if (serverSeconds != nil && serverSeconds.integerValue > 0)
                 {
-                    MXLogDebug(@"[RoomSettings] reloadConfiguration SYNC from server: %@", serverSeconds);
                     [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:serverSeconds forRoomId:mxRoom.roomId];
                     if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:mxRoom.roomId] == nil)
                     {
@@ -601,7 +598,6 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                     NSArray *events = [mxRoomState stateEventsWithType:kMXEventTypeStringRoomRetention];
                     if (events.count > 0)
                     {
-                        MXLogDebug(@"[RoomSettings] reloadConfiguration SYNC from server: off (events.count=%lu)", (unsigned long)events.count);
                         [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:mxRoom.roomId];
                         [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:mxRoom.roomId];
                     }
@@ -609,11 +605,11 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
             }
             Section *sectionDisappearing = [Section sectionWithTag:SECTION_TAG_DISAPPEARING_MESSAGES];
             [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_OFF];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY];
-            [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK];
+        [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MINUTE];
+        [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_5_MINUTES];
+        [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_HOUR];
+        [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_DAY];
+        [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_WEEK];
             [sectionDisappearing addRowWithTag:ROOM_SETTINGS_DISAPPEARING_MESSAGES_1_MONTH];
             sectionDisappearing.headerTitle = [VectorL10n roomDetailsDisappearingMessagesSection];
             [tmpSections addObject:sectionDisappearing];
@@ -1694,11 +1690,11 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                 return;
             }
             
-            // Disappearing messages (m.room.retention)
+            // Disappearing messages (m.room.retention) - syncs to server for all users; deletion is per-device based on read time
             NSNumber *disappearingSeconds = updatedItemsDict[kRoomSettingsDisappearingMessagesKey];
             if (disappearingSeconds != nil)
             {
-                MXLogDebug(@"[RoomSettings] Retention SAVE START roomId=%@ seconds=%@ (0=off) hasStored=%@", mxRoom.roomId, disappearingSeconds, @([RiotSettings.shared hasRoomRetentionStoredValueForRoomId:mxRoom.roomId]));
+                MXLogDebug(@"[RoomSettings] Retention SAVE roomId=%@ seconds=%@", mxRoom.roomId, disappearingSeconds);
                 NSDictionary *content;
                 if (disappearingSeconds.integerValue > 0)
                 {
@@ -1707,7 +1703,6 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                 }
                 else
                 {
-                    // Off: send empty content per MSC1763. max_lifetime:0 means "expire immediately" in Synapse!
                     content = @{};
                 }
                 NSNumber *secondsToStore = disappearingSeconds;
@@ -1723,7 +1718,7 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
                     [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self->mxRoom.roomId fromLocalChange:YES];
                     [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self->mxRoom.roomId];
                 }
-                MXLogDebug(@"[RoomSettings] Retention OPTIMISTIC UPDATE done seconds=%@, now sending to server", secondsToStore);
+                MXLogDebug(@"[RoomSettings] Retention OPTIMISTIC UPDATE done seconds=%@, sending to server", secondsToStore);
                 pendingOperation = [mxRoom sendStateEventOfType:kMXEventTypeStringRoomRetention content:content stateKey:@"" success:^(NSString *eventId) {
                     if (weakSelf)
                     {
@@ -2663,18 +2658,14 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
     else if (section == SECTION_TAG_DISAPPEARING_MESSAGES)
     {
         NSNumber *pendingSeconds = updatedItemsDict[kRoomSettingsDisappearingMessagesKey];
-        NSNumber *currentSeconds = [mxRoomState vc_maxLifetimeSeconds];
-        if (pendingSeconds != nil)
+        NSNumber *currentSeconds = pendingSeconds;
+        if (currentSeconds == nil)
         {
-            currentSeconds = pendingSeconds;
+            currentSeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:mxRoom.roomId];
         }
-        else
+        if (currentSeconds == nil)
         {
-            NSNumber *localSeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:mxRoom.roomId];
-            if (localSeconds != nil)
-            {
-                currentSeconds = localSeconds;
-            }
+            currentSeconds = [mxRoomState vc_maxLifetimeSeconds];
         }
         
         TableViewCellWithCheckBoxAndLabel *disappearingCell = [tableView dequeueReusableCellWithIdentifier:[TableViewCellWithCheckBoxAndLabel defaultReuseIdentifier] forIndexPath:indexPath];

@@ -18,8 +18,7 @@ Please see LICENSE in the repository root for full details.
 
 - (BOOL)isLastMessageExpiredByRetention
 {
-    if (self.isSuggestedRoom || !self.roomSummary.lastMessage) { return NO; }
-    
+    if (self.isSuggestedRoom || !self.roomSummary.lastMessage || !self.roomSummary.lastMessage.eventId) { return NO; }
     NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomSummary.roomId];
     if (policySeconds == nil)
     {
@@ -28,12 +27,11 @@ Please see LICENSE in the repository root for full details.
     }
     if (policySeconds == nil || policySeconds.integerValue <= 0) { return NO; }
     
-    NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomSummary.roomId];
-    NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
-    NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
-    NSTimeInterval tsSec = self.roomSummary.lastMessage.originServerTs / 1000.0;  // originServerTs is ms
-    
-    return (tsSec >= startTs && tsSec < cutoff);
+    NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:self.roomSummary.lastMessage.eventId inRoomId:self.roomSummary.roomId];
+    if (readTsNum == nil) { return NO; }  // Not read yet - not expired
+    double readTsSec = readTsNum.doubleValue / 1000.0;
+    double nowSec = [[NSDate date] timeIntervalSince1970];
+    return (nowSec - readTsSec) > policySeconds.doubleValue;
 }
 
 //  Adds K handling to super implementation

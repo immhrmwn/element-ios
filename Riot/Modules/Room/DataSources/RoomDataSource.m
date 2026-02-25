@@ -284,52 +284,60 @@ const CGFloat kTypingCellHeight = 24;
     [self.roomDataSourceDelegate roomDataSourceDidUpdateEncryptionTrustLevel:self];
 }
 
+- (void)didReplaceEvent:(MXEvent *)oldEvent withEvent:(MXEvent *)newEvent
+{
+    [super didReplaceEvent:oldEvent withEvent:newEvent];
+    if (!self.roomId || !oldEvent.eventId.length || !newEvent.eventId.length || [oldEvent.eventId isEqualToString:newEvent.eventId]) { return; }
+    NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:oldEvent.eventId inRoomId:self.roomId];
+    if (readTsNum != nil)
+    {
+        [RiotSettings.shared setLocalDisappearingMessagesReadTimestamp:readTsNum.doubleValue forEventId:newEvent.eventId inRoomId:self.roomId];
+    }
+}
+
+- (void)recordLocalReadTimestampsForEventIds:(NSArray<NSString *> *)eventIds
+{
+    if (!self.roomId || eventIds.count == 0) { return; }
+    NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
+    if (policySeconds == nil)
+    {
+        policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
+    }
+    if (policySeconds == nil || policySeconds.integerValue <= 0) { return; }
+    double nowMs = [[NSDate date] timeIntervalSince1970] * 1000.0;
+    for (NSString *eventId in eventIds)
+    {
+        if (!eventId.length) { continue; }
+        NSNumber *existing = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:eventId inRoomId:self.roomId];
+        if (existing == nil)
+        {
+            [RiotSettings.shared setLocalDisappearingMessagesReadTimestamp:nowMs forEventId:eventId inRoomId:self.roomId];
+        }
+    }
+}
+
 - (BOOL)shouldQueueEventForProcessing:(MXEvent *)event roomState:(MXRoomState *)roomState direction:(MXTimelineDirection)direction
 {
-    // Filter expired messages when room has disappearing messages (retention) enabled
-    if (!event.isState)
+    // Duration syncs via m.room.retention (same for all users); deletion is per-device based on read time
+    // Unread messages stay visible; when read, timer starts; after lifetime from read, message disappears
+    NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
+    if (policySeconds == nil && roomState)
     {
-        // Skip retention filter for events without valid timestamp (local echo, not-yet-decrypted, etc.)
-        if (event.originServerTs == 0 || event.originServerTs == kMXUndefinedTimestamp)
+        policySeconds = [roomState vc_maxLifetimeSeconds];
+    }
+    if (policySeconds != nil && policySeconds.integerValue > 0 && event.eventId && !event.isState)
+    {
+        NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
+        if (readTsNum != nil)
         {
-            // Allow through - don't filter
-        }
-        else
-        {
-        NSTimeInterval eventTsSec = event.originServerTs / 1000.0;  // originServerTs is ms
-        NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
-        if (policySeconds == nil && roomState)
-        {
-            policySeconds = [roomState vc_maxLifetimeSeconds];
-        }
-        if (policySeconds != nil && policySeconds.integerValue > 0)
-        {
-            NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
-            NSTimeInterval startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
-            NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
-            if (eventTsSec >= startTs && eventTsSec < cutoff)
+            double readTsSec = readTsNum.doubleValue / 1000.0;
+            double nowSec = [[NSDate date] timeIntervalSince1970];
+            if (nowSec - readTsSec > policySeconds.doubleValue)
             {
-                return NO;
+                return NO;  // Read + lifetime passed - hide from timeline
             }
         }
-        else
-        {
-            // Retention is Off, but still expire messages sent under previous policy (e.g. "satu" sent at 1 day, then user set Off and sent "dua")
-            NSNumber *prevStart = [RiotSettings.shared previousRetentionStartBeforeOffForRoomId:self.roomId];
-            NSNumber *prevPolicy = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
-            NSNumber *offTsNum = [RiotSettings.shared retentionOffTimestampForRoomId:self.roomId];
-            if (prevStart != nil && prevPolicy != nil && offTsNum != nil)
-            {
-                NSTimeInterval startTs = prevStart.doubleValue;
-                NSTimeInterval offTs = offTsNum.doubleValue;
-                NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - prevPolicy.doubleValue;
-                if (eventTsSec >= startTs && eventTsSec < offTs && eventTsSec < cutoff)
-                {
-                    return NO;
-                }
-            }
-        }
-        }
+        // No read timestamp = unread - keep visible (in cache until read)
     }
     
     if (self.threadId)
@@ -1320,6 +1328,8 @@ const CGFloat kTypingCellHeight = 24;
     MXRoomState *roomState = self.room.dangerousSyncState;
     if (!roomState || [RiotSettings.shared hasRecentLocalRetentionChangeForRoomId:self.roomId])
     {
+        [self removeExpiredBubblesIfNeeded];
+        [self startRetentionExpiryCheckTimerIfNeeded];
         return;
     }
     NSNumber *currentStored = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
@@ -1334,35 +1344,38 @@ const CGFloat kTypingCellHeight = 24;
         NSArray *events = [roomState stateEventsWithType:kMXEventTypeStringRoomRetention];
         if (events.count > 0)
         {
-            newValue = @0;  // Off
+            newValue = @0;
         }
     }
-    if (newValue == nil) { return; }
-    // Only update if different (avoids unnecessary notifications)
-    if ([currentStored isEqualToNumber:newValue]) { return; }
-    if (newValue.integerValue > 0)
+    if (newValue != nil && ![currentStored isEqualToNumber:newValue])
     {
-        [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:newValue forRoomId:self.roomId];
-        if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
+        if (newValue.integerValue > 0)
         {
-            [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:newValue forRoomId:self.roomId];
+            if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
+            {
+                [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+            }
         }
-        MXLogDebug(@"[RoomDataSource] syncRetentionFromRoomState roomId=%@ seconds=%@", self.roomId, newValue);
+        else
+        {
+            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self.roomId];
+            [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
+        }
+        [self removeExpiredBubblesIfNeeded];
+        [self startRetentionExpiryCheckTimerIfNeeded];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.roomDataSourceDelegate respondsToSelector:@selector(roomDataSourceDidUpdateRoomRetention:)])
+            {
+                [self.roomDataSourceDelegate roomDataSourceDidUpdateRoomRetention:self];
+            }
+        });
     }
     else
     {
-        [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self.roomId];
-        [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
-        MXLogDebug(@"[RoomDataSource] syncRetentionFromRoomState roomId=%@ off", self.roomId);
+        [self removeExpiredBubblesIfNeeded];
+        [self startRetentionExpiryCheckTimerIfNeeded];
     }
-    [self removeExpiredBubblesIfNeeded];
-    [self startRetentionExpiryCheckTimerIfNeeded];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if ([self.roomDataSourceDelegate respondsToSelector:@selector(roomDataSourceDidUpdateRoomRetention:)])
-        {
-            [self.roomDataSourceDelegate roomDataSourceDidUpdateRoomRetention:self];
-        }
-    });
 }
 
 - (void)addRoomRetentionEventListener
@@ -1371,102 +1384,70 @@ const CGFloat kTypingCellHeight = 24;
     [self syncRetentionFromCurrentRoomState];
     
     retentionListener = [self.timeline listenToEventsOfTypes:@[kMXEventTypeStringRoomRetention] onEvent:^(MXEvent *event, MXTimelineDirection direction, MXRoomState *roomState) {
-        MXLogDebug(@"[RoomDataSource] Retention EVENT roomId=%@ direction=%ld", self.roomId, (long)direction);
-        if (direction == MXTimelineDirectionForwards && roomState)
+        if (direction != MXTimelineDirectionForwards || !roomState) { return; }
+        if ([RiotSettings.shared hasRecentLocalRetentionChangeForRoomId:self.roomId]) { return; }
+        NSNumber *seconds = [roomState vc_maxLifetimeSeconds];
+        if (seconds != nil && seconds.integerValue > 0)
         {
-            if ([RiotSettings.shared hasRecentLocalRetentionChangeForRoomId:self.roomId])
+            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId];
+            if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
             {
-                MXLogDebug(@"[RoomDataSource] Retention EVENT skipped (recent local change) roomId=%@", self.roomId);
-                return;
+                [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
             }
-            NSNumber *seconds = [roomState vc_maxLifetimeSeconds];
-            MXLogDebug(@"[RoomDataSource] Retention EVENT processing seconds=%@", seconds);
-            if (seconds != nil && seconds.integerValue > 0)
-            {
-                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId];
-                if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
-                {
-                    [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
-                }
-            }
-            else
-            {
-                [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self.roomId];
-                [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
-            }
-            [self removeExpiredBubblesIfNeeded];
-            [self startRetentionExpiryCheckTimerIfNeeded];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if ([self.roomDataSourceDelegate respondsToSelector:@selector(roomDataSourceDidUpdateRoomRetention:)])
-                {
-                    [self.roomDataSourceDelegate roomDataSourceDidUpdateRoomRetention:self];
-                }
-            });
         }
+        else
+        {
+            [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:self.roomId];
+            [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:self.roomId];
+        }
+        [self removeExpiredBubblesIfNeeded];
+        [self startRetentionExpiryCheckTimerIfNeeded];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([self.roomDataSourceDelegate respondsToSelector:@selector(roomDataSourceDidUpdateRoomRetention:)])
+            {
+                [self.roomDataSourceDelegate roomDataSourceDidUpdateRoomRetention:self];
+            }
+        });
     }];
 }
 
 - (void)removeExpiredBubblesIfNeeded
 {
+    // Duration from m.room.retention (synced); deletion per-device based on read time
     NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
-    NSTimeInterval startTs = 0;
-    NSTimeInterval cutoff = 0;
-    NSTimeInterval offTs = 0;
-    BOOL hasActivePolicy = (policySeconds != nil && policySeconds.integerValue > 0);
-    if (hasActivePolicy)
+    if (policySeconds == nil)
     {
-        NSNumber *retentionStart = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
-        startTs = retentionStart != nil ? retentionStart.doubleValue : 0;
-        cutoff = [[NSDate date] timeIntervalSince1970] - policySeconds.doubleValue;
+        policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
     }
-    else
+    if (policySeconds != nil && policySeconds.integerValue > 0)
     {
-        NSNumber *prevStart = [RiotSettings.shared previousRetentionStartBeforeOffForRoomId:self.roomId];
-        NSNumber *prevPolicy = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
-        NSNumber *offTsNum = [RiotSettings.shared retentionOffTimestampForRoomId:self.roomId];
-        if (prevStart == nil || prevPolicy == nil || offTsNum == nil) { return; }
-        startTs = prevStart.doubleValue;
-        offTs = offTsNum.doubleValue;
-        cutoff = [[NSDate date] timeIntervalSince1970] - prevPolicy.doubleValue;
-        if (cutoff > offTs)
+        double nowSec = [[NSDate date] timeIntervalSince1970];
+        BOOL hasExpired = NO;
+        @synchronized(bubbles)
         {
-            [RiotSettings.shared clearPreviousRetentionBeforeOffForRoomId:self.roomId];
-            return;  // All messages in that window have expired, nothing more to do
-        }
-    }
-    
-    BOOL hasExpired = NO;
-    @synchronized(bubbles)
-    {
-        for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
-        {
-            for (MXEvent *event in cellData.events)
+            for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
             {
-                NSTimeInterval eventTsSec = event.originServerTs / 1000.0;  // originServerTs is ms
-                if (!event.isState)
+                for (MXEvent *event in cellData.events)
                 {
-                    if (hasActivePolicy && eventTsSec >= startTs && eventTsSec < cutoff)
+                    if (!event.eventId || event.isState) { continue; }
+                    NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
+                    if (readTsNum == nil) { continue; }
+                    double readTsSec = readTsNum.doubleValue / 1000.0;
+                    if (nowSec - readTsSec > policySeconds.doubleValue)
                     {
                         hasExpired = YES;
                         break;
                     }
-                    if (!hasActivePolicy)
-                    {
-                        if (eventTsSec >= startTs && eventTsSec < offTs && eventTsSec < cutoff)
-                        {
-                            hasExpired = YES;
-                            break;
-                        }
-                    }
                 }
+                if (hasExpired) { break; }
             }
-            if (hasExpired) { break; }
+        }
+        if (hasExpired)
+        {
+            [self reload];
         }
     }
-    if (hasExpired)
-    {
-        [self reload];
-    }
+    // Local disappearing only - server-side retention (origin_server_ts) removed
 }
 
 - (void)removeRoomRetentionEventListener
@@ -1484,9 +1465,11 @@ const CGFloat kTypingCellHeight = 24;
 {
     if (retentionExpiryCheckTimer) { return; }
     NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
-    BOOL hasActivePolicy = (policySeconds != nil && policySeconds.integerValue > 0);
-    BOOL hasPreviousPending = ([RiotSettings.shared previousRetentionStartBeforeOffForRoomId:self.roomId] != nil);
-    if (!hasActivePolicy && !hasPreviousPending) { return; }
+    if (policySeconds == nil)
+    {
+        policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
+    }
+    if (policySeconds == nil || policySeconds.integerValue <= 0) { return; }
     retentionExpiryCheckTimer = [NSTimer scheduledTimerWithTimeInterval:5.0 repeats:YES block:^(NSTimer * _Nonnull timer) {
         [self removeExpiredBubblesIfNeeded];
     }];

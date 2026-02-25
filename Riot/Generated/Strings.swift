@@ -7615,7 +7615,7 @@ public class VectorL10n: NSObject {
   public static var settingsDefaultDisappearingMessages: String { 
     return VectorL10n.tr("Vector", "settings_default_disappearing_messages") 
   }
-  /// New rooms you create will have this disappearing messages setting applied by default.
+  /// New rooms you create will have this setting. Messages disappear per device based on when each user reads them.
   public static var settingsDefaultDisappearingMessagesFooter: String { 
     return VectorL10n.tr("Vector", "settings_default_disappearing_messages_footer") 
   }

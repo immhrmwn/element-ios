@@ -377,7 +377,7 @@ Please see LICENSE in the repository root for full details.
 - (void)vc_applyDefaultRetentionPolicyIfNeededWithCompletion:(void (^)(void))completion
 {
     NSNumber *seconds = [RiotSettings.shared defaultRoomRetentionPolicySeconds];
-    if (!seconds || seconds.integerValue <= 0)
+    if (!seconds || seconds.intValue <= 0)
     {
         if (completion) { completion(); }
         return;

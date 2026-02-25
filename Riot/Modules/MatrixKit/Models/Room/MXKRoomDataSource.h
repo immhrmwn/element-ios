@@ -696,6 +696,24 @@ extern NSString *const kMXKRoomDataSourceTimelineErrorErrorKey;
 - (void)didReceiveReceiptEvent:(MXEvent *)receiptEvent roomState:(MXRoomState *)roomState;
 
 /**
+ Called when an event has been added to the timeline (displayed in bubbles).
+ Subclasses may override to record read timestamps for local disappearing messages.
+ 
+ @param event the event that was added.
+ @param roomState the room state when the event was added.
+ */
+- (void)didAddEventToTimeline:(MXEvent *)event roomState:(MXRoomState *)roomState;
+
+/**
+ Called when a local echo event is replaced by the server event (eventIds differ).
+ Subclasses may override to transfer read timestamps for disappearing messages.
+ 
+ @param oldEvent the replaced event (local echo)
+ @param newEvent the replacement event (from server)
+ */
+- (void)didReplaceEvent:(MXEvent *)oldEvent withEvent:(MXEvent *)newEvent;
+
+/**
  Update read receipts for an event in a bubble cell data.
 
  @param cellData The cell data to update.

@@ -108,6 +108,12 @@ Please see LICENSE in the repository root for full details.
 
 - (void)resetTypingNotification;
 
+/**
+ Record read timestamps for local disappearing messages when user actually sees the messages (cell displayed).
+ Only records for events that don't have a read timestamp yet.
+ */
+- (void)recordLocalReadTimestampsForEventIds:(NSArray<NSString *> *)eventIds;
+
 @end
 
 @protocol RoomDataSourceDelegate <MXKDataSourceDelegate>

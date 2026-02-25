@@ -5459,6 +5459,23 @@ static CGSize kThreadListBarButtonItemImageSize;
                 [self checkReadMarkerVisibility];
             });
         }
+        // Record read timestamps for local disappearing messages when user sees the message
+        if ([self.roomDataSource isKindOfClass:RoomDataSource.class] && tableView == self.bubblesTableView)
+        {
+            id<MXKRoomBubbleCellDataStoring> cellData = [self.roomDataSource cellDataAtIndex:indexPath.row];
+            if (cellData.events.count > 0)
+            {
+                NSMutableArray<NSString *> *eventIds = [NSMutableArray arrayWithCapacity:cellData.events.count];
+                for (MXEvent *ev in cellData.events)
+                {
+                    if (ev.eventId.length) { [eventIds addObject:ev.eventId]; }
+                }
+                if (eventIds.count > 0)
+                {
+                    [(RoomDataSource *)self.roomDataSource recordLocalReadTimestampsForEventIds:eventIds];
+                }
+            }
+        }
     }
 }
 

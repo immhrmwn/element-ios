@@ -38,6 +38,10 @@ final class RiotSettings: NSObject {
         static let defaultRoomRetentionPolicySeconds = "defaultRoomRetentionPolicySeconds"
         /// Per-user session start timestamp (ms) for hiding timeline before login when syncWithEmptyRoomTimeline is used.
         static let sessionStartTimestampMsPerUserId = "sessionStartTimestampMsPerUserId"
+        /// Local disappearing messages: duration in seconds after read. 0/nil = off.
+        static let localDisappearingMessagesDurationSeconds = "localDisappearingMessagesDurationSeconds"
+        /// Local disappearing messages: eventId -> firstReadTimestampMs per room. [roomId: [eventId: Double]]
+        static let localDisappearingMessagesReadTimestamps = "localDisappearingMessagesReadTimestamps"
     }
     
     static let shared = RiotSettings()
@@ -667,6 +671,57 @@ final class RiotSettings: NSObject {
     
     @objc func clearPreviousRetentionBeforeOffForRoomId(_ roomId: String) {
         clearPreviousRetentionBeforeOff(for: roomId)
+    }
+
+    // MARK: - Local disappearing messages (client-side only, based on read time)
+
+    /// Duration in seconds after read. 0/nil = off. Values: 60, 300, 3600, 86400, 604800, 2592000.
+    var localDisappearingMessagesDurationSeconds: Int? {
+        get {
+            guard let raw = RiotSettings.defaults.object(forKey: UserDefaultsKeys.localDisappearingMessagesDurationSeconds) else { return nil }
+            guard let seconds = raw as? Int else { return nil }
+            return seconds > 0 ? seconds : nil
+        }
+        set {
+            if let s = newValue, s > 0 {
+                RiotSettings.defaults.set(s, forKey: UserDefaultsKeys.localDisappearingMessagesDurationSeconds)
+            } else {
+                RiotSettings.defaults.set(0, forKey: UserDefaultsKeys.localDisappearingMessagesDurationSeconds)
+            }
+        }
+    }
+
+    @objc func localDisappearingMessagesDurationSecondsObjC() -> NSNumber? {
+        guard let s = localDisappearingMessagesDurationSeconds else { return nil }
+        return NSNumber(value: s)
+    }
+
+    @objc func setLocalDisappearingMessagesDurationSecondsObjC(_ seconds: NSNumber?) {
+        if let s = seconds, s.intValue > 0 {
+            localDisappearingMessagesDurationSeconds = s.intValue
+        } else {
+            localDisappearingMessagesDurationSeconds = nil
+        }
+    }
+
+    /// Read timestamp in ms for event. [roomId: [eventId: timestampMs]]
+    @objc func localDisappearingMessagesReadTimestamp(forEventId eventId: String, inRoomId roomId: String) -> NSNumber? {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.localDisappearingMessagesReadTimestamps),
+              let roomDict = try? JSONDecoder().decode([String: [String: Double]].self, from: data),
+              let eventDict = roomDict[roomId],
+              let ts = eventDict[eventId] else { return nil }
+        return NSNumber(value: ts)
+    }
+
+    @objc func setLocalDisappearingMessagesReadTimestamp(_ timestampMs: Double, forEventId eventId: String, inRoomId roomId: String) {
+        var roomDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.localDisappearingMessagesReadTimestamps)
+            .flatMap { try JSONDecoder().decode([String: [String: Double]].self, from: $0) }) ?? [:]
+        var eventDict = roomDict[roomId] ?? [:]
+        eventDict[eventId] = timestampMs
+        roomDict[roomId] = eventDict
+        if let data = try? JSONEncoder().encode(roomDict) {
+            RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.localDisappearingMessagesReadTimestamps)
+        }
     }
 }
 

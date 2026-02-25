@@ -2479,6 +2479,11 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
     });
 }
 
+- (void)didAddEventToTimeline:(MXEvent *)event roomState:(MXRoomState *)roomState
+{
+    // Default: no-op. Subclasses may override to record read timestamps for local disappearing messages.
+}
+
 - (void)updateCellData:(MXKRoomBubbleCellData*)cellData withReadReceipts:(NSArray<MXReceiptData*>*)readReceipts forEventId:(NSString*)eventId
 {
     cellData.readReceipts[eventId] = readReceipts;
@@ -2583,11 +2588,22 @@ typedef NS_ENUM (NSUInteger, MXKRoomDataSourceError) {
         [self removeCellData:bubbleData];
     }
 
+    // Subclass hook: transfer read timestamp when local echo replaced by server event
+    if (event)
+    {
+        [self didReplaceEvent:eventToReplace withEvent:event];
+    }
+
     // Update the delegate
     if (self.delegate)
     {
         [self.delegate dataSource:self didCellChange:nil];
     }
+}
+
+- (void)didReplaceEvent:(MXEvent *)oldEvent withEvent:(MXEvent *)newEvent
+{
+    // Default: no-op. RoomDataSource overrides to transfer read timestamp for disappearing messages.
 }
 
 - (NSArray<NSIndexPath *> *)removeCellData:(id<MXKRoomBubbleCellDataStoring>)cellData
