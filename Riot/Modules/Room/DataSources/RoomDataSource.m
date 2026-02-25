@@ -303,7 +303,14 @@ const CGFloat kTypingCellHeight = 24;
     {
         policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
     }
-    if (policySeconds == nil || policySeconds.integerValue <= 0) { return; }
+    BOOL hasActivePolicy = (policySeconds != nil && policySeconds.integerValue > 0);
+    
+    // Even when current policy is Off, messages that were sent under a previous
+    // retention policy should still expire after their lifetime once read.
+    NSNumber *previousPolicySeconds = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
+    BOOL hasPreviousPolicy = (previousPolicySeconds != nil && previousPolicySeconds.integerValue > 0);
+    
+    if (!hasActivePolicy && !hasPreviousPolicy) { return; }
     double nowMs = [[NSDate date] timeIntervalSince1970] * 1000.0;
     for (NSString *eventId in eventIds)
     {
@@ -318,6 +325,13 @@ const CGFloat kTypingCellHeight = 24;
 
 - (BOOL)shouldQueueEventForProcessing:(MXEvent *)event roomState:(MXRoomState *)roomState direction:(MXTimelineDirection)direction
 {
+    // Hard local purge: never show events that were previously expired on this device,
+    // regardless of current room retention settings.
+    if (event.eventId && [RiotSettings.shared isLocalDisappearingMessagePurgedForEventId:event.eventId inRoomId:self.roomId])
+    {
+        return NO;
+    }
+    
     // Duration syncs via m.room.retention (same for all users); deletion is per-device based on read time
     // Unread messages stay visible; when read, timer starts; after lifetime from read, message disappears
     NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
@@ -325,19 +339,66 @@ const CGFloat kTypingCellHeight = 24;
     {
         policySeconds = [roomState vc_maxLifetimeSeconds];
     }
-    if (policySeconds != nil && policySeconds.integerValue > 0 && event.eventId && !event.isState)
+    BOOL hasActivePolicy = (policySeconds != nil && policySeconds.integerValue > 0);
+    
+    if (event.eventId && !event.isState)
     {
-        NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
-        if (readTsNum != nil)
+        // Case 1: retention currently ON – apply to messages sent after it was enabled
+        if (hasActivePolicy)
         {
-            double readTsSec = readTsNum.doubleValue / 1000.0;
-            double nowSec = [[NSDate date] timeIntervalSince1970];
-            if (nowSec - readTsSec > policySeconds.doubleValue)
+            NSNumber *startTsNum = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
+            double startOriginTsSec = startTsNum != nil ? startTsNum.doubleValue : 0.0;
+            
+            double eventTsSec = event.originServerTs / 1000.0;
+            if (startTsNum != nil && eventTsSec < startOriginTsSec)
             {
-                return NO;  // Read + lifetime passed - hide from timeline
+                // Message sent before current retention policy – do not auto-expire it under the new policy.
+            }
+            else
+            {
+                NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
+                if (readTsNum != nil)
+                {
+                    double readTsSec = readTsNum.doubleValue / 1000.0;
+                    double nowSec = [[NSDate date] timeIntervalSince1970];
+                    if (nowSec - readTsSec > policySeconds.doubleValue)
+                    {
+                        [RiotSettings.shared markLocalDisappearingMessagePurgedForEventId:event.eventId inRoomId:self.roomId];
+                        return NO;
+                    }
+                }
             }
         }
-        // No read timestamp = unread - keep visible (in cache until read)
+        // Case 2: retention sekarang OFF, tapi masih ada previous policy yang harus tetap berlaku
+        else
+        {
+            NSNumber *prevStartNum = [RiotSettings.shared previousRetentionStartBeforeOffForRoomId:self.roomId];
+            NSNumber *prevPolicyNum = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
+            NSNumber *offTsNum = [RiotSettings.shared retentionOffTimestampForRoomId:self.roomId];
+            if (prevStartNum != nil && prevPolicyNum != nil && offTsNum != nil)
+            {
+                double prevStartSec = prevStartNum.doubleValue;
+                double prevPolicySec = prevPolicyNum.doubleValue;
+                double offSec = offTsNum.doubleValue;
+                double eventTsSec = event.originServerTs / 1000.0;
+                
+                // Hanya pesan yang dikirim saat previous policy aktif (sebelum Off)
+                if (eventTsSec >= prevStartSec && eventTsSec < offSec)
+                {
+                    NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
+                    if (readTsNum != nil)
+                    {
+                        double readTsSec = readTsNum.doubleValue / 1000.0;
+                        double nowSec = [[NSDate date] timeIntervalSince1970];
+                        if (nowSec - readTsSec > prevPolicySec)
+                        {
+                            [RiotSettings.shared markLocalDisappearingMessagePurgedForEventId:event.eventId inRoomId:self.roomId];
+                            return NO;
+                        }
+                    }
+                }
+            }
+        }
     }
     
     if (self.threadId)
@@ -1354,7 +1415,26 @@ const CGFloat kTypingCellHeight = 24;
             [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:newValue forRoomId:self.roomId];
             if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
             {
-                [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+                // Align local start timestamp with the actual m.room.retention event time,
+                // so all devices share the same boundary for "messages sent after policy enabled".
+                NSArray<MXEvent *> *events = [roomState stateEventsWithType:kMXEventTypeStringRoomRetention];
+                double latestOriginSec = 0.0;
+                for (MXEvent *ev in events)
+                {
+                    if (ev.originServerTs > 0)
+                    {
+                        double sec = ev.originServerTs / 1000.0;
+                        if (sec > latestOriginSec)
+                        {
+                            latestOriginSec = sec;
+                        }
+                    }
+                }
+                if (latestOriginSec <= 0.0)
+                {
+                    latestOriginSec = [[NSDate date] timeIntervalSince1970];
+                }
+                [RiotSettings.shared setRoomRetentionStartTimestamp:@(latestOriginSec) forRoomId:self.roomId];
             }
         }
         else
@@ -1392,7 +1472,16 @@ const CGFloat kTypingCellHeight = 24;
             [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:seconds forRoomId:self.roomId];
             if ([RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId] == nil)
             {
-                [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:self.roomId];
+                double startSec = 0.0;
+                if (event.originServerTs > 0)
+                {
+                    startSec = event.originServerTs / 1000.0;
+                }
+                if (startSec <= 0.0)
+                {
+                    startSec = [[NSDate date] timeIntervalSince1970];
+                }
+                [RiotSettings.shared setRoomRetentionStartTimestamp:@(startSec) forRoomId:self.roomId];
             }
         }
         else
@@ -1419,10 +1508,15 @@ const CGFloat kTypingCellHeight = 24;
     {
         policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
     }
+    
+    double nowSec = [[NSDate date] timeIntervalSince1970];
+    BOOL hasExpired = NO;
+    
+    // Case 1: retention currently ON – use current policy and start timestamp
     if (policySeconds != nil && policySeconds.integerValue > 0)
     {
-        double nowSec = [[NSDate date] timeIntervalSince1970];
-        BOOL hasExpired = NO;
+        NSNumber *startTsNum = [RiotSettings.shared roomRetentionStartTimestampForRoomId:self.roomId];
+        double startOriginTsSec = startTsNum != nil ? startTsNum.doubleValue : 0.0;
         @synchronized(bubbles)
         {
             for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
@@ -1430,6 +1524,11 @@ const CGFloat kTypingCellHeight = 24;
                 for (MXEvent *event in cellData.events)
                 {
                     if (!event.eventId || event.isState) { continue; }
+                    
+                    double eventTsSec = event.originServerTs / 1000.0;
+                    // Only consider messages sent AFTER current retention was enabled.
+                    if (startTsNum != nil && eventTsSec < startOriginTsSec) { continue; }
+                    
                     NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
                     if (readTsNum == nil) { continue; }
                     double readTsSec = readTsNum.doubleValue / 1000.0;
@@ -1442,12 +1541,50 @@ const CGFloat kTypingCellHeight = 24;
                 if (hasExpired) { break; }
             }
         }
-        if (hasExpired)
+    }
+    // Case 2: retention sekarang OFF, tapi pesan yang dikirim di bawah previous policy masih boleh expired
+    else
+    {
+        NSNumber *prevStartNum = [RiotSettings.shared previousRetentionStartBeforeOffForRoomId:self.roomId];
+        NSNumber *prevPolicyNum = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
+        NSNumber *offTsNum = [RiotSettings.shared retentionOffTimestampForRoomId:self.roomId];
+        if (prevStartNum != nil && prevPolicyNum != nil && offTsNum != nil)
         {
-            [self reload];
+            double prevStartSec = prevStartNum.doubleValue;
+            double prevPolicySec = prevPolicyNum.doubleValue;
+            double offSec = offTsNum.doubleValue;
+            
+            @synchronized(bubbles)
+            {
+                for (id<MXKRoomBubbleCellDataStoring> cellData in bubbles)
+                {
+                    for (MXEvent *event in cellData.events)
+                    {
+                        if (!event.eventId || event.isState) { continue; }
+                        
+                        double eventTsSec = event.originServerTs / 1000.0;
+                        // Hanya pesan yang dikirim saat previous policy aktif (sebelum dimatikan)
+                        if (eventTsSec < prevStartSec || eventTsSec >= offSec) { continue; }
+                        
+                        NSNumber *readTsNum = [RiotSettings.shared localDisappearingMessagesReadTimestampForEventId:event.eventId inRoomId:self.roomId];
+                        if (readTsNum == nil) { continue; }
+                        double readTsSec = readTsNum.doubleValue / 1000.0;
+                        if (nowSec - readTsSec > prevPolicySec)
+                        {
+                            hasExpired = YES;
+                            break;
+                        }
+                    }
+                    if (hasExpired) { break; }
+                }
+            }
         }
     }
-    // Local disappearing only - server-side retention (origin_server_ts) removed
+    
+    if (hasExpired)
+    {
+        [self reload];
+    }
 }
 
 - (void)removeRoomRetentionEventListener
@@ -1464,12 +1601,22 @@ const CGFloat kTypingCellHeight = 24;
 - (void)startRetentionExpiryCheckTimerIfNeeded
 {
     if (retentionExpiryCheckTimer) { return; }
+    
+    // We need a periodic check when:
+    // - there is an active retention policy (current m.room.retention > 0), OR
+    // - current policy is Off but there is a previous policy that should still
+    //   expire messages sent under it after they are read.
     NSNumber *policySeconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:self.roomId];
     if (policySeconds == nil)
     {
         policySeconds = [self.room.dangerousSyncState vc_maxLifetimeSeconds];
     }
-    if (policySeconds == nil || policySeconds.integerValue <= 0) { return; }
+    BOOL hasActivePolicy = (policySeconds != nil && policySeconds.integerValue > 0);
+    
+    NSNumber *previousPolicySeconds = [RiotSettings.shared previousRetentionPolicyBeforeOffForRoomId:self.roomId];
+    BOOL hasPreviousPolicy = (previousPolicySeconds != nil && previousPolicySeconds.integerValue > 0);
+    
+    if (!hasActivePolicy && !hasPreviousPolicy) { return; }
     retentionExpiryCheckTimer = [NSTimer scheduledTimerWithTimeInterval:5.0 repeats:YES block:^(NSTimer * _Nonnull timer) {
         [self removeExpiredBubblesIfNeeded];
     }];

@@ -38,8 +38,10 @@ import MatrixSDK
     
     private func disappearingMessagesBannerDurationText() -> String? {
         guard let roomId = roomDataSource?.roomId else { return nil }
+        // Local setting (including explicit "Off") is the source of truth.
+        // Only fall back to server state when there is no stored local value.
         var policySeconds: NSNumber? = RiotSettings.shared.roomRetentionMaxLifetimeSeconds(forRoomId: roomId)
-        if policySeconds == nil || policySeconds?.intValue ?? 0 <= 0 {
+        if policySeconds == nil {
             policySeconds = mainSession?.room(withRoomId: roomId)?.dangerousSyncState?.vc_maxLifetimeSeconds()
         }
         MXLog.debug("[RoomVC] bannerDurationText roomId=\(roomId) policySeconds=\(policySeconds?.stringValue ?? "nil")")

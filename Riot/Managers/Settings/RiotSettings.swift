@@ -42,6 +42,8 @@ final class RiotSettings: NSObject {
         static let localDisappearingMessagesDurationSeconds = "localDisappearingMessagesDurationSeconds"
         /// Local disappearing messages: eventId -> firstReadTimestampMs per room. [roomId: [eventId: Double]]
         static let localDisappearingMessagesReadTimestamps = "localDisappearingMessagesReadTimestamps"
+        /// Local disappearing messages: events that have been locally purged and must never be shown again. [roomId: Set<eventId>]
+        static let localDisappearingMessagesPurgedEvents = "localDisappearingMessagesPurgedEvents"
     }
     
     static let shared = RiotSettings()
@@ -721,6 +723,33 @@ final class RiotSettings: NSObject {
         roomDict[roomId] = eventDict
         if let data = try? JSONEncoder().encode(roomDict) {
             RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.localDisappearingMessagesReadTimestamps)
+        }
+    }
+    
+    // MARK: - Local disappearing messages: per-device purged events
+    
+    /// Returns true if this event has been locally purged (should never be shown again on this device).
+    @objc func isLocalDisappearingMessagePurged(forEventId eventId: String, inRoomId roomId: String) -> Bool {
+        guard let data = RiotSettings.defaults.data(forKey: UserDefaultsKeys.localDisappearingMessagesPurgedEvents),
+              let roomDict = try? JSONDecoder().decode([String: Set<String>].self, from: data),
+              let purgedSet = roomDict[roomId] else {
+            return false
+        }
+        return purgedSet.contains(eventId)
+    }
+    
+    /// Mark an event as locally purged (never show again on this device).
+    @objc func markLocalDisappearingMessagePurged(forEventId eventId: String, inRoomId roomId: String) {
+        guard !eventId.isEmpty else { return }
+        var roomDict = (try? RiotSettings.defaults.data(forKey: UserDefaultsKeys.localDisappearingMessagesPurgedEvents)
+            .flatMap { try JSONDecoder().decode([String: Set<String>].self, from: $0) }) ?? [:]
+        var purgedSet = roomDict[roomId] ?? Set<String>()
+        if !purgedSet.contains(eventId) {
+            purgedSet.insert(eventId)
+            roomDict[roomId] = purgedSet
+            if let data = try? JSONEncoder().encode(roomDict) {
+                RiotSettings.defaults.set(data, forKey: UserDefaultsKeys.localDisappearingMessagesPurgedEvents)
+            }
         }
     }
 }
