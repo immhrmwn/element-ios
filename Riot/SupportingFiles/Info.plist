@@ -51,9 +51,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<true/>
-	<key>ITSEncryptionExportComplianceCode</key>
-	<string>d1dd539c-d21c-43e2-92e2-212c5269565c</string>
+	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>http</string>
@@ -71,19 +69,19 @@
 	<key>NSCalendarsUsageDescription</key>
 	<string>See your scheduled meetings in the app.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>The camera is used to make video calls, or take and upload photos and videos.</string>
+	<string>BatChat uses your camera to make video calls and take photos or videos that you can send in chats or use as your profile picture.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>They will be shared with your identity server to help find your contacts on Matrix.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Face ID is used to access your app.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>When you share your location to people, Element needs access to show them a map.</string>
+	<string>When you share your location with people, BatChat needs access to show them a map.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>When you share your location to people, Element needs access to show them a map.</string>
+	<string>When you share your location with people, BatChat needs access to show them a map.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>The microphone is used to take videos, make calls.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Allow access to photos to upload photos and videos from your library.</string>
+	<string>BatChat needs access to your photo library so you can choose existing photos and videos to share in chats and to update your profile picture.</string>
 	<key>NSSiriUsageDescription</key>
 	<string>Siri is used to perform calls even from the lock screen.</string>
 	<key>RTCAppGroupIdentifier</key>
@@ -117,16 +115,16 @@
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
