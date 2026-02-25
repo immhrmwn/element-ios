@@ -182,6 +182,9 @@ static CGSize kThreadListBarButtonItemImageSize;
     
     // Observe kMXEventTypeStringRoomMember events
     __weak id roomMemberEventListener;
+    
+    // Floating action button to quickly change disappearing messages for this room.
+    UIButton *disappearingMessagesFabButton;
 }
 
 @property (nonatomic, strong) RemoveJitsiWidgetView *removeJitsiWidgetView;
@@ -237,6 +240,210 @@ static CGSize kThreadListBarButtonItemImageSize;
 
 @implementation RoomViewController
 @synthesize roomPreviewData;
+
+#pragma mark - Disappearing messages FAB
+
+- (void)setupDisappearingMessagesFabButton
+{
+    if (disappearingMessagesFabButton || !self.view || !self.inputBackgroundView)
+    {
+        return;
+    }
+    
+    disappearingMessagesFabButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    disappearingMessagesFabButton.translatesAutoresizingMaskIntoConstraints = NO;
+    disappearingMessagesFabButton.layer.cornerRadius = 24.0;
+    disappearingMessagesFabButton.clipsToBounds = YES;
+    
+    [self.view addSubview:disappearingMessagesFabButton];
+    
+    // Size & position: circular FAB above input toolbar, bottom-right
+    [NSLayoutConstraint activateConstraints:@[
+        [disappearingMessagesFabButton.widthAnchor constraintEqualToConstant:48.0],
+        [disappearingMessagesFabButton.heightAnchor constraintEqualToConstant:48.0],
+        [disappearingMessagesFabButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+        [disappearingMessagesFabButton.bottomAnchor constraintEqualToAnchor:self.inputBackgroundView.topAnchor constant:-16.0]
+    ]];
+    
+    // Apply initial theme: match navigation back style (light background, dark icon)
+    disappearingMessagesFabButton.backgroundColor = [ThemeService.shared.theme.backgroundColor colorWithAlphaComponent:0.92];
+    UIImage *icon = [UIImage systemImageNamed:@"clock"];
+    if (icon)
+    {
+        icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    [disappearingMessagesFabButton setImage:icon forState:UIControlStateNormal];
+    disappearingMessagesFabButton.tintColor = ThemeService.shared.theme.textPrimaryColor;
+    // Stronger shadow so it pops from bg
+    [disappearingMessagesFabButton vc_addShadowWithColor:ThemeService.shared.theme.shadowColor
+                                                  offset:CGSizeMake(0, 6)
+                                                  radius:10
+                                                 opacity:0.28];
+    
+    // Attach UIAction-based menu on supported iOS versions
+    if (@available(iOS 14.0, *))
+    {
+        __weak typeof(self) weakSelf = self;
+        UIAction *offAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessagesOff]
+                                                 image:nil
+                                            identifier:nil
+                                               handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:nil];
+        }];
+        UIAction *oneMinuteAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Minute]
+                                                        image:nil
+                                                   identifier:nil
+                                                      handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(60)];
+        }];
+        UIAction *fiveMinutesAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages5Minutes]
+                                                          image:nil
+                                                     identifier:nil
+                                                        handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(5 * 60)];
+        }];
+        UIAction *oneHourAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Hour]
+                                                      image:nil
+                                                 identifier:nil
+                                                    handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(60 * 60)];
+        }];
+        UIAction *oneDayAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Day]
+                                                     image:nil
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(24 * 60 * 60)];
+        }];
+        UIAction *oneWeekAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Week]
+                                                      image:nil
+                                                 identifier:nil
+                                                    handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(7 * 24 * 60 * 60)];
+        }];
+        UIAction *oneMonthAction = [UIAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Month]
+                                                       image:nil
+                                                  identifier:nil
+                                                     handler:^(__kindof UIAction * _Nonnull action) {
+            [weakSelf applyDisappearingMessagesRetentionSeconds:@(30 * 24 * 60 * 60)];
+        }];
+        
+        UIMenu *menu = [UIMenu menuWithTitle:@"" children:@[
+            offAction,
+            oneMinuteAction,
+            fiveMinutesAction,
+            oneHourAction,
+            oneDayAction,
+            oneWeekAction,
+            oneMonthAction
+        ]];
+        disappearingMessagesFabButton.menu = menu;
+        disappearingMessagesFabButton.showsMenuAsPrimaryAction = YES;
+    }
+    else
+    {
+        // Fallback for older iOS: show legacy action sheet
+        [disappearingMessagesFabButton addTarget:self action:@selector(disappearingMessagesFabTapped:) forControlEvents:UIControlEventTouchUpInside];
+    }
+}
+
+- (void)applyDisappearingMessagesRetentionSeconds:(NSNumber *)seconds
+{
+    if (!self.roomDataSource.roomId)
+    {
+        return;
+    }
+    
+    NSString *roomId = self.roomDataSource.roomId;
+    MXRoom *room = [self.mainSession roomWithRoomId:roomId];
+    if (!room)
+    {
+        return;
+    }
+    
+    NSNumber *secondsToStore = seconds ?: @(0);
+    NSDictionary *content;
+    if (secondsToStore.integerValue > 0)
+    {
+        long long maxLifetimeMs = secondsToStore.longLongValue * 1000;
+        content = @{ @"max_lifetime": @(maxLifetimeMs) };
+    }
+    else
+    {
+        // Off: send empty content per MSC1763. max_lifetime:0 means "expire immediately" in Synapse!
+        content = @{};
+    }
+    
+    // Update local settings so UI and filtering are in sync immediately
+    if (secondsToStore.integerValue > 0)
+    {
+        [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:secondsToStore forRoomId:roomId fromLocalChange:YES];
+        [RiotSettings.shared setRoomRetentionStartTimestamp:@([[NSDate date] timeIntervalSince1970]) forRoomId:roomId];
+    }
+    else
+    {
+        [RiotSettings.shared setRoomRetentionMaxLifetimeSeconds:@0 forRoomId:roomId fromLocalChange:YES];
+        [RiotSettings.shared setRoomRetentionStartTimestamp:nil forRoomId:roomId];
+    }
+    
+    [room sendStateEventOfType:kMXEventTypeStringRoomRetention
+                       content:content
+                      stateKey:@""
+                       success:^(NSString *eventId) {
+                           MXLogDebug(@"[RoomVC] FAB disappearing messages applied seconds=%@ roomId=%@", secondsToStore, roomId);
+                       } failure:^(NSError *error) {
+                           MXLogDebug(@"[RoomVC] FAB disappearing messages FAILED seconds=%@ roomId=%@ error=%@", secondsToStore, roomId, error);
+                       }];
+}
+
+- (void)disappearingMessagesFabTapped:(id)sender
+{
+    // Legacy fallback: show action sheet using same helper
+    __weak typeof(self) weakSelf = self;
+    UIAlertController *picker = [UIAlertController alertControllerWithTitle:nil
+                                                                    message:nil
+                                                             preferredStyle:UIAlertControllerStyleActionSheet];
+    
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessagesOff]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:nil];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Minute]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages5Minutes]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(5 * 60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Hour]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(60 * 60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Day]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(24 * 60 * 60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Week]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(7 * 24 * 60 * 60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n roomDetailsDisappearingMessages1Month]
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(UIAlertAction * _Nonnull action) {
+        [weakSelf applyDisappearingMessagesRetentionSeconds:@(30 * 24 * 60 * 60)];
+    }]];
+    [picker addAction:[UIAlertAction actionWithTitle:[VectorL10n cancel]
+                                               style:UIAlertActionStyleCancel
+                                             handler:nil]];
+    
+    [self presentViewController:picker animated:YES completion:nil];
+}
 
 #pragma mark - Class methods
 
@@ -426,6 +633,9 @@ static CGSize kThreadListBarButtonItemImageSize;
             [self updateDisappearingMessagesBannerViewVisibility];
         }
     }];
+    
+    // Add floating action button to quickly change disappearing messages
+    [self setupDisappearingMessagesFabButton];
 }
 
 - (void)userInterfaceThemeDidChange
@@ -506,6 +716,23 @@ static CGSize kThreadListBarButtonItemImageSize;
     }
     
     self.scrollToBottomBadgeLabel.badgeColor = ThemeService.shared.theme.tintColor;
+    
+    // Update floating disappear messages FAB style
+    if (disappearingMessagesFabButton)
+    {
+        disappearingMessagesFabButton.backgroundColor = [ThemeService.shared.theme.backgroundColor colorWithAlphaComponent:0.92];
+        [disappearingMessagesFabButton vc_addShadowWithColor:ThemeService.shared.theme.shadowColor
+                                                      offset:CGSizeMake(0, 6)
+                                                      radius:10
+                                                     opacity:0.28];
+        UIImage *icon = [UIImage systemImageNamed:@"clock"];
+        if (icon)
+        {
+            icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        [disappearingMessagesFabButton setImage:icon forState:UIControlStateNormal];
+        disappearingMessagesFabButton.tintColor = ThemeService.shared.theme.textPrimaryColor;
+    }
     
     [self updateThreadListBarButtonBadgeWith:self.mainSession.threadingService];
     
