@@ -17,8 +17,14 @@ struct PrimaryActionButtonStyle: ButtonStyle {
     var font: Font?
     
     private var fontColor: Color {
-        // Always white unless disabled with a dark theme.
-        .white.opacity(theme.isDark && !isEnabled ? 0.3 : 1.0)
+        if theme.isDark {
+            // Dark mode: accent is light (#EBEDF1), so use a dark title color for contrast.
+            let darkText = Color(red: 28/255, green: 29/255, blue: 33/255)
+            return darkText.opacity(isEnabled ? 1.0 : 0.3)
+        } else {
+            // Light mode: accent is dark (#1C1D21), keep white text for contrast.
+            return .white.opacity(isEnabled ? 1.0 : 0.3)
+        }
     }
     
     private var backgroundColor: Color {
