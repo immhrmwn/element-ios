@@ -36,7 +36,8 @@ struct OnboardingSplashScreenViewState: BindableState, CustomDebugStringConverti
         Color(red: 0.95, green: 0.98, blue: 0.96)
     ]
     
-    /// An array containing all content of the carousel pages
+    /// An array containing all content of the carousel pages.
+    /// For BatChat we show a single, custom splash page.
     let content: [OnboardingSplashScreenPageContent]
     var bindings: OnboardingSplashScreenBindings
     
@@ -53,27 +54,14 @@ struct OnboardingSplashScreenViewState: BindableState, CustomDebugStringConverti
     }
     
     init() {
-        // The pun doesn't translate, so we only use it for English.
-        let locale = Locale.current
-        let page4Title = locale.identifier.hasPrefix("en") ? "Cut the slack from teams." : VectorL10n.onboardingSplashPage4TitleNoPun
-        
+        // BatChat: single-page onboarding with custom artwork.
         content = [
-            OnboardingSplashScreenPageContent(title: VectorL10n.onboardingSplashPage1Title,
-                                              message: VectorL10n.onboardingSplashPage1Message,
-                                              image: Asset.Images.onboardingSplashScreenPage1,
-                                              darkImage: Asset.Images.onboardingSplashScreenPage1Dark),
-            OnboardingSplashScreenPageContent(title: VectorL10n.onboardingSplashPage2Title,
-                                              message: VectorL10n.onboardingSplashPage2Message,
-                                              image: Asset.Images.onboardingSplashScreenPage2,
-                                              darkImage: Asset.Images.onboardingSplashScreenPage2Dark),
-            OnboardingSplashScreenPageContent(title: VectorL10n.onboardingSplashPage3Title,
-                                              message: VectorL10n.onboardingSplashPage3Message,
-                                              image: Asset.Images.onboardingSplashScreenPage3,
-                                              darkImage: Asset.Images.onboardingSplashScreenPage3Dark),
-            OnboardingSplashScreenPageContent(title: page4Title,
-                                              message: VectorL10n.onboardingSplashPage4Message,
-                                              image: Asset.Images.onboardingSplashScreenPage4,
-                                              darkImage: Asset.Images.onboardingSplashScreenPage4Dark)
+            OnboardingSplashScreenPageContent(
+                title: "BatChat",
+                message: "Aplikasi obrolan aman untuk tim, teman, dan organisasi. Buat sebuah obrolan, atau bergabung ke ruangan yang sudah ada, untuk memulai.",
+                image: Asset.Images.onboardingBatchat,
+                darkImage: Asset.Images.onboardingBatchat
+            )
         ]
         bindings = OnboardingSplashScreenBindings()
     }

@@ -1760,7 +1760,7 @@
 "onboarding_splash_page_2_title" = "Anda dalam kendali.";
 "onboarding_splash_page_1_message" = "Komunikasi aman dan independen yang memberikan tingkat privasi yang sama seperti percakapan tatap muka di rumah Anda sendiri.";
 "onboarding_splash_page_1_title" = "Miliki percakapan Anda.";
-"onboarding_splash_login_button_title" = "Saya sudah punya akun";
+"onboarding_splash_login_button_title" = "Masuk";
 
 // Onboarding
 "onboarding_splash_register_button_title" = "Buat akun";

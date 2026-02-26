@@ -30,30 +30,18 @@ struct OnboardingSplashScreen: View {
     
     var body: some View {
         GeometryReader { geometry in
-            VStack(alignment: .leading) {
+            VStack {
+                // Large top margin so the logo block sits slightly below the top,
+                // but independent from the button position.
                 Spacer()
-                    .frame(height: OnboardingMetrics.spacerHeight(in: geometry))
+                    .frame(height: OnboardingMetrics.spacerHeight(in: geometry) + 100)
                 
-                // The main content of the carousel
-                HStack(alignment: .top, spacing: 0) {
-                    // Add a hidden page at the start of the carousel duplicating the content of the last page
-                    OnboardingSplashScreenPage(content: viewModel.viewState.content[pageCount - 1])
+                if let first = viewModel.viewState.content.first {
+                    OnboardingSplashScreenPage(content: first)
                         .frame(width: geometry.size.width)
-                    
-                    ForEach(0..<pageCount, id: \.self) { index in
-                        OnboardingSplashScreenPage(content: viewModel.viewState.content[index])
-                            .frame(width: geometry.size.width)
-                    }
                 }
-                .offset(x: pageOffset(in: geometry))
                 
-                Spacer()
-                
-                OnboardingSplashScreenPageIndicator(pageCount: pageCount,
-                                                    pageIndex: viewModel.pageIndex)
-                    .frame(width: geometry.size.width)
-                    .padding(.bottom)
-                
+                // Flexible space between the logo/text and the primary action button.
                 Spacer()
                 
                 buttons
@@ -65,35 +53,23 @@ struct OnboardingSplashScreen: View {
                     .frame(height: OnboardingMetrics.spacerHeight(in: geometry))
             }
             .frame(maxHeight: .infinity)
-            .background(background.ignoresSafeArea().offset(x: pageOffset(in: geometry)))
-            .gesture(
-                DragGesture()
-                    .onChanged(handleDragGestureChange)
-                    .onEnded { handleDragGestureEnded($0, viewSize: geometry.size) }
-            )
+            .background(background.ignoresSafeArea())
         }
         .accentColor(theme.colors.accent)
         .navigationBarHidden(true)
-        .onAppear {
-            startTimer()
-        }
-        .onDisappear { stopTimer() }
+        // For BatChat's single-page splash, we don't need carousel timers or drag gestures.
         .track(screen: .welcome)
     }
     
     /// The main action buttons.
     var buttons: some View {
         VStack(spacing: 12) {
-            Button { viewModel.send(viewAction: .register) } label: {
-                Text(VectorL10n.onboardingSplashRegisterButtonTitle)
-            }
-            .buttonStyle(PrimaryActionButtonStyle())
-            
             Button { viewModel.send(viewAction: .login) } label: {
                 Text(VectorL10n.onboardingSplashLoginButtonTitle)
                     .font(theme.fonts.body)
-                    .padding(12)
+                    // .padding(12)
             }
+            .buttonStyle(PrimaryActionButtonStyle())
         }
         .padding(.horizontal, 16)
         .readableFrame()
