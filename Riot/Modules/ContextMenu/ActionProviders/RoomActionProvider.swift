@@ -26,12 +26,11 @@ class RoomActionProvider: RoomActionProviderProtocol {
     var menu: UIMenu {
         if service.isRoomJoined {
             var children = service.hasUnread ? [self.markAsReadAction] : []
+            // BatChat: hide "Move to people" (direct chat toggle) and "Leave" from the room list context menu.
             children.append(contentsOf: [
-                self.directChatAction,
                 self.notificationsAction,
                 self.favouriteAction,
-                self.lowPriorityAction,
-                self.leaveAction
+                self.lowPriorityAction
             ])
             return UIMenu(children: children)
         } else {
