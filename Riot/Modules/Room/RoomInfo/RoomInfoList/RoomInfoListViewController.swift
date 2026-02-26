@@ -205,14 +205,40 @@ final class RoomInfoListViewController: UIViewController {
         if BuildSettings.showNotificationsV2 {
             rows.append(roomNotifications)
         }
-        // BatChat: hide Integrations, Members, Poll History, Uploads, and Search entries from the "Other" section.
-
+        
+        // BatChat:
+        // - For personal chats (DM): show only Settings & Notifications.
+        // - For group chats: also show Uploads and the "Leave" action.
+        if !viewData.basicInfoViewData.isDirect {
+            rows.append(rowUploads)
+        }
+        
         let sectionSettings = Section(header: VectorL10n.roomInfoListSectionOther,
                                       rows: rows,
                                       footer: nil)
         
+        let leaveTitle = viewData.basicInfoViewData.isDirect ?
+            VectorL10n.roomParticipantsLeavePromptTitleForDm :
+            VectorL10n.roomParticipantsLeavePromptTitle
+        let rowLeave = Row(type: .destructive,
+                           icon: Asset.Images.roomActionLeave.image,
+                           text: leaveTitle,
+                           accessoryType: .none) {
+            if viewData.isLastOwner {
+                self.present(self.isLastOwnerAlertController, animated: true, completion: nil)
+            } else {
+                self.present(self.leaveAlertController, animated: true, completion: nil)
+            }
+        }
+        let sectionLeave = Section(header: nil,
+                                   rows: [rowLeave],
+                                   footer: nil)
+        
         tmpSections.append(sectionSettings)
-        // BatChat: hide "Leave" and "Report content" sections from room details.
+        
+        if !viewData.basicInfoViewData.isDirect {
+            tmpSections.append(sectionLeave)
+        }
         
         sections = tmpSections
     }
