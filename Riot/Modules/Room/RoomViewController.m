@@ -2264,27 +2264,7 @@ static CGSize kThreadListBarButtonItemImageSize;
         
         [self refreshMissedDiscussionsCount:YES];
         
-        if (RiotSettings.shared.enableThreads && !_isWaitingForOtherParticipants)
-        {
-            if (self.roomDataSource.threadId)
-            {
-                //  in a thread
-                if (rightBarButtonItems == nil)
-                {
-                    rightBarButtonItems = [NSMutableArray new];
-                }
-                UIBarButtonItem *itemThreadMore = [self threadMoreBarButtonItem];
-                [rightBarButtonItems insertObject:itemThreadMore atIndex:0];
-            }
-            else
-            {
-                //  in a regular timeline
-                UIBarButtonItem *itemThreadList = [self threadListBarButtonItem];
-                [self updateThreadListBarButtonItem:itemThreadList
-                                               with:self.mainSession.threadingService];
-                [rightBarButtonItems insertObject:itemThreadList atIndex:0];
-            }
-        }
+        // BatChat: hide threads/"discussion" button from the room header.
     }
     else if (self.isNewDirectChat)
     {

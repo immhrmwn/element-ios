@@ -127,6 +127,13 @@ class AllChatsViewController: HomeViewController {
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchResultsUpdater = self
         searchController.delegate = self
+        searchController.hidesNavigationBarDuringPresentation = false
+        
+        // BatChat: keep the search bar pinned at the top of the room list, regardless of iOS version.
+        navigationItem.hidesSearchBarWhenScrolling = false
+        if #available(iOS 16.0, *) {
+            navigationItem.preferredSearchBarPlacement = .stacked
+        }
 
         NotificationCenter.default.addObserver(self, selector: #selector(self.setupEditOptions), name: AllChatsLayoutSettingsManager.didUpdateSettings, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(self.updateBadgeButton), name: MXSpaceNotificationCounter.didUpdateNotificationCount, object: nil)
