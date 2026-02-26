@@ -29,14 +29,7 @@ struct AuthenticationLoginScreen: View {
                     .padding(.top, OnboardingMetrics.topPaddingToNavigationBar)
                     .padding(.bottom, 28)
                 
-                serverInfo
-                    .padding(.leading, 12)
-                    .padding(.bottom, 16)
-                
-                Rectangle()
-                    .fill(theme.colors.quinaryContent)
-                    .frame(height: 1)
-                    .padding(.bottom, 22)
+                // BatChat: hide server info section & separator on login screen.
                 
                 if viewModel.viewState.homeserver.showLoginForm {
                     loginForm
@@ -109,19 +102,13 @@ struct AuthenticationLoginScreen: View {
                                    onCommit: submit)
                 .accessibilityIdentifier("passwordTextField")
             
-            Button { viewModel.send(viewAction: .forgotPassword) } label: {
-                Text(VectorL10n.authenticationLoginForgotPassword)
-                    .font(theme.fonts.body)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.bottom, 8)
-            
             Button(action: submit) {
                 Text(VectorL10n.next)
             }
             .buttonStyle(PrimaryActionButtonStyle())
             .disabled(!viewModel.viewState.canSubmit)
             .accessibilityIdentifier("nextButton")
+            .padding(.top, 8)
         }
     }
 
