@@ -205,48 +205,14 @@ final class RoomInfoListViewController: UIViewController {
         if BuildSettings.showNotificationsV2 {
             rows.append(roomNotifications)
         }
-        if RiotSettings.shared.roomInfoScreenShowIntegrations {
-            rows.append(rowIntegrations)
-        }
-        rows.append(rowMembers)
-        
-        if BuildSettings.pollsEnabled {
-            rows.append(rowPollHistory)
-        }
-        
-        rows.append(rowUploads)
-        if !viewData.isEncrypted {
-            rows.append(rowSearch)
-        }
+        // BatChat: hide Integrations, Members, Poll History, Uploads, and Search entries from the "Other" section.
 
         let sectionSettings = Section(header: VectorL10n.roomInfoListSectionOther,
                                       rows: rows,
                                       footer: nil)
         
-        let leaveTitle = viewData.basicInfoViewData.isDirect ?
-            VectorL10n.roomParticipantsLeavePromptTitleForDm :
-            VectorL10n.roomParticipantsLeavePromptTitle
-        let rowLeave = Row(type: .destructive, icon: Asset.Images.roomActionLeave.image, text: leaveTitle, accessoryType: .none) {
-            if viewData.isLastOwner {
-                self.present(self.isLastOwnerAlertController, animated: true, completion: nil)
-            } else {
-                self.present(self.leaveAlertController, animated: true, completion: nil)
-            }
-        }
-        let sectionLeave = Section(header: nil,
-                                   rows: [rowLeave],
-                                   footer: nil)
-        
-        let rowReport = Row(type: .destructive, icon: Asset.Images.error.image, text: VectorL10n.roomEventActionReport, accessoryType: .disclosureIndicator) {
-            self.viewModel.process(viewAction: .report)
-        }
-        let sectionReport = Section(header: nil,
-                                    rows: [rowReport],
-                                    footer: nil)
-        
         tmpSections.append(sectionSettings)
-        tmpSections.append(sectionLeave)
-        tmpSections.append(sectionReport)
+        // BatChat: hide "Leave" and "Report content" sections from room details.
         
         sections = tmpSections
     }

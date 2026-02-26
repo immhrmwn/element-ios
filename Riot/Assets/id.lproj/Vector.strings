@@ -789,7 +789,7 @@
 "room_details_fail_to_update_room_direct" = "Gagal untuk memperbarui detail ruangan ini";
 "room_details_flair_invalid_id_prompt_msg" = "%@ bukan pengenal yang absah untuk sebuah komunitas";
 "room_details_addresses_invalid_address_prompt_msg" = "%@ bukan format yang absah untuk sebuah alias";
-"room_details_history_section_members_only" = "Anggota saha (sejak opsi ini dipilih)";
+"room_details_history_section_members_only" = "Anggota saja (sejak opsi ini dipilih)";
 "room_details_access_section_no_address_warning" = "Untuk menautkan ke ruangan itu harus memiliki alamat";
 "voice_message_stop_locked_mode_recording" = "Ketuk pada rekaman Anda untuk berhenti atau dengarkan";
 "room_intro_cell_information_dm_sentence1_part1" = "Ini adalah awal dari pesan langsung Anda dengan ";

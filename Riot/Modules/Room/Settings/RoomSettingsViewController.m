@@ -552,14 +552,7 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
         }
         [tmpSections addObject:sectionAccess];
         
-        if (RiotSettings.shared.roomSettingsScreenAllowChangingAccessSettings)
-        {
-            Section *promotionAccess = [Section sectionWithTag:SECTION_TAG_PROMOTION];
-            promotionAccess.headerTitle = VectorL10n.roomDetailsPromoteRoomTitle;
-            [promotionAccess addRowWithTag:ROOM_SETTINGS_ROOM_ACCESS_DIRECTORY_VISIBILITY];
-            [promotionAccess addRowWithTag:ROOM_SETTINGS_ROOM_PROMOTE_SECTION_ROW_SUGGEST];
-            [tmpSections addObject:promotionAccess];
-        }
+        // BatChat: hide "Promote room" section and the "List in room directory" toggle.
     }
     
     if (RiotSettings.shared.roomSettingsScreenAllowChangingHistorySettings)
