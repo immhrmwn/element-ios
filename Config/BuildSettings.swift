@@ -241,7 +241,8 @@ final class BuildSettings: NSObject {
     
     static let allowSendingStickers: Bool = true
     
-    static let allowLocalContactsAccess: Bool = true
+    // BatChat: hide local contacts section in Settings.
+    static let allowLocalContactsAccess: Bool = false
     
     static let allowInviteExernalUsers: Bool = true
     
@@ -284,21 +285,27 @@ final class BuildSettings: NSObject {
     
     static let settingsScreenShowUserFirstName: Bool = false
     static let settingsScreenShowUserSurname: Bool = false
-    static let settingsScreenAllowAddingEmailThreepids: Bool = true
-    static let settingsScreenAllowAddingPhoneThreepids: Bool = true
-    static let settingsScreenShowThreepidExplanatory: Bool = true
-    static let settingsScreenShowDiscoverySettings: Bool = true
+    static let settingsScreenAllowAddingEmailThreepids: Bool = false
+    static let settingsScreenAllowAddingPhoneThreepids: Bool = false
+    // BatChat: hide the explanatory footer about managing email/phone addresses.
+    static let settingsScreenShowThreepidExplanatory: Bool = false
+    // BatChat: hide the "Discovery" section in Settings.
+    static let settingsScreenShowDiscoverySettings: Bool = false
     // Identity Server section hidden for now
     static let settingsScreenAllowIdentityServerConfig: Bool = false
     static let settingsScreenShowConfirmMediaSize: Bool = true
     static let settingsScreenShowAdvancedSettings: Bool = true
     static let settingsScreenShowLabSettings: Bool = true
-    static let settingsScreenAllowChangingRageshakeSettings: Bool = true
-    static let settingsScreenAllowChangingCrashUsageDataSettings: Bool = true
-    static let settingsScreenAllowBugReportingManually: Bool = true
+    // BatChat: hide the "About" section in Settings.
+    static let settingsScreenShowAboutSection: Bool = false
+    // BatChat: hide crash/analytics + Rage Shake toggles and manual bug reporting in Advanced.
+    static let settingsScreenAllowChangingRageshakeSettings: Bool = false
+    static let settingsScreenAllowChangingCrashUsageDataSettings: Bool = false
+    static let settingsScreenAllowBugReportingManually: Bool = false
     static let settingsScreenAllowDeactivatingAccount: Bool = true
-    static let settingsScreenShowChangePassword:Bool = true
-    static let settingsScreenShowEnableStunServerFallback: Bool = true
+    static let settingsScreenShowChangePassword:Bool = false
+    // BatChat: hide the "CALLS" section and STUN fallback options in Settings.
+    static let settingsScreenShowEnableStunServerFallback: Bool = false
     static let settingsScreenShowNotificationDecodedContentOption: Bool = true
     static let settingsSecurityScreenShowSessions:Bool = true
     static let settingsSecurityScreenShowSetupBackup:Bool = true

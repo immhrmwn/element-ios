@@ -534,14 +534,15 @@ SSOAuthenticationPresenterDelegate>
 
     Section *sectionTimeline = [Section sectionWithTag:SECTION_TAG_TIMELINE];
     sectionTimeline.headerTitle = VectorL10n.settingsTimeline;
-
+    
     if (BuildSettings.roomScreenAllowTimelineStyleConfiguration)
     {
         [sectionTimeline addRowWithTag:TIMELINE_STYLE_INDEX];
     }
     [sectionTimeline addRowWithTag:TIMELINE_SHOW_REDACTIONS_IN_ROOM_HISTORY_INDEX];
-    [sectionTimeline addRowWithTag:TIMELINE_USE_ONLY_LATEST_USER_AVATAR_AND_NAME_INDEX];
-
+    // BatChat: hide the "Use only the latest avatar and name" toggle in Timeline.
+    // [sectionTimeline addRowWithTag:TIMELINE_USE_ONLY_LATEST_USER_AVATAR_AND_NAME_INDEX];
+    
     [tmpSections addObject:sectionTimeline];
     
     if(BuildSettings.settingsScreenPresenceAllowConfiguration)
@@ -575,28 +576,31 @@ SSOAuthenticationPresenterDelegate>
     
     [tmpSections addObject:sectionAdvanced];
     
-    Section *sectionAbout = [Section sectionWithTag:SECTION_TAG_ABOUT];
-    if (BuildSettings.applicationCopyrightUrlString.length)
+    if (BuildSettings.settingsScreenShowAboutSection)
     {
-        [sectionAbout addRowWithTag:ABOUT_COPYRIGHT_INDEX];
+        Section *sectionAbout = [Section sectionWithTag:SECTION_TAG_ABOUT];
+        if (BuildSettings.applicationCopyrightUrlString.length)
+        {
+            [sectionAbout addRowWithTag:ABOUT_COPYRIGHT_INDEX];
+        }
+        if (BuildSettings.applicationAcceptableUsePolicyUrlString.length)
+        {
+            [sectionAbout addRowWithTag:ABOUT_ACCEPTABLE_USE_INDEX];
+        }
+        if (BuildSettings.applicationPrivacyPolicyUrlString.length)
+        {
+            [sectionAbout addRowWithTag:ABOUT_PRIVACY_INDEX];
+        }
+        [sectionAbout addRowWithTag:ABOUT_THIRD_PARTY_INDEX];
+        sectionAbout.headerTitle = VectorL10n.settingsAbout;
+        
+        if (BuildSettings.settingsScreenShowAdvancedSettings)
+        {        
+            sectionAbout.footerTitle = [self buildAboutSectionFooterTitleWithAccount:account];
+        }
+        
+        [tmpSections addObject:sectionAbout];
     }
-    if (BuildSettings.applicationAcceptableUsePolicyUrlString.length)
-    {
-        [sectionAbout addRowWithTag:ABOUT_ACCEPTABLE_USE_INDEX];
-    }
-    if (BuildSettings.applicationPrivacyPolicyUrlString.length)
-    {
-        [sectionAbout addRowWithTag:ABOUT_PRIVACY_INDEX];
-    }
-    [sectionAbout addRowWithTag:ABOUT_THIRD_PARTY_INDEX];
-    sectionAbout.headerTitle = VectorL10n.settingsAbout;
-
-    if (BuildSettings.settingsScreenShowAdvancedSettings)
-    {        
-        sectionAbout.footerTitle = [self buildAboutSectionFooterTitleWithAccount:account];
-    }
-    
-    [tmpSections addObject:sectionAbout];
     
     if (BuildSettings.settingsScreenShowLabSettings)
     {
@@ -604,17 +608,20 @@ SSOAuthenticationPresenterDelegate>
         [sectionLabs addRowWithTag:LABS_ENABLE_RINGING_FOR_GROUP_CALLS_INDEX];
         [sectionLabs addRowWithTag:LABS_ENABLE_THREADS_INDEX];
         [sectionLabs addRowWithTag:LABS_ENABLE_AUTO_REPORT_DECRYPTION_ERRORS];
-        if (BuildSettings.locationSharingEnabled)
-        {
-            [sectionLabs addRowWithTag:LABS_ENABLE_LIVE_LOCATION_SHARING];
-        }
+        // BatChat: hide "Live location sharing" toggle from Labs.
+        // if (BuildSettings.locationSharingEnabled)
+        // {
+        //     [sectionLabs addRowWithTag:LABS_ENABLE_LIVE_LOCATION_SHARING];
+        // }
         [sectionLabs addRowWithTag:LABS_ENABLE_NEW_SESSION_MANAGER];
-        [sectionLabs addRowWithTag:LABS_ENABLE_NEW_CLIENT_INFO_FEATURE];
+        // BatChat: hide "Record client name/version/URL" toggle from Labs.
+        // [sectionLabs addRowWithTag:LABS_ENABLE_NEW_CLIENT_INFO_FEATURE];
         if (@available(iOS 15.0, *))
         {
             [sectionLabs addRowWithTag:LABS_ENABLE_WYSIWYG_COMPOSER];
         }
-        [sectionLabs addRowWithTag:LABS_ENABLE_VOICE_BROADCAST];
+        // BatChat: hide "Voice broadcast" toggle from Labs.
+        // [sectionLabs addRowWithTag:LABS_ENABLE_VOICE_BROADCAST];
         [sectionLabs addRowWithTag:LABS_ENABLE_AUTO_ACCEPT_ROOM_INVITES];
         sectionLabs.headerTitle = [VectorL10n settingsLabs];
         if (sectionLabs.hasAnyRows)
