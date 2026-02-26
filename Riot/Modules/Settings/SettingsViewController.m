@@ -815,6 +815,9 @@ SSOAuthenticationPresenterDelegate>
 {
     [super viewWillAppear:animated];
     
+    // BatChat: re-apply title so "Pengaturan" stays visible after transitions (iOS 16+ nav bar glitch).
+    self.navigationItem.title = [VectorL10n settingsTitle];
+    
     [self.screenTracker trackScreen];
 
     // Refresh display

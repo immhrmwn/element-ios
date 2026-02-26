@@ -121,8 +121,9 @@ class AllChatsViewController: HomeViewController {
 
         updateUI()
         
-        navigationItem.largeTitleDisplayMode = .automatic
-        navigationController?.navigationBar.prefersLargeTitles = true
+        // BatChat: force inline title to avoid iOS 16+ large-title glitches where the title sometimes disappears.
+        navigationItem.largeTitleDisplayMode = .never
+        navigationController?.navigationBar.prefersLargeTitles = false
 
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchResultsUpdater = self
@@ -141,6 +142,9 @@ class AllChatsViewController: HomeViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        // BatChat: re-apply title so it stays visible after tab/transition (iOS 16+ nav bar glitch).
+        self.title = self.dataSource?.currentSpace?.summary?.displayName ?? VectorL10n.allChatsTitle
         
         self.toolbar.tintColor = theme.colors.accent
         if self.navigationItem.searchController == nil {
