@@ -130,6 +130,7 @@ final class EnterNewRoomDetailsViewController: UIViewController {
         
         var section4: Section?
         if RiotSettings.shared.roomCreationScreenAllowRoomTypeConfiguration {
+            // BatChat: only allow private/restricted groups, hide the public-room option.
             let row_4_0 = Row(type: .default, text: VectorL10n.createRoomTypePrivate, accessoryType: viewModel.roomCreationParameters.joinRule == .private ? .checkmark : .none) { [weak self] in
                 guard let self = self else {
                     return
@@ -151,25 +152,12 @@ final class EnterNewRoomDetailsViewController: UIViewController {
                     self.mainTableView.vc_scrollToBottom()
                 }
             }
-            let row_4_2 = Row(type: .default, text: VectorL10n.createRoomTypePublic, accessoryType: viewModel.roomCreationParameters.joinRule == .public ? .checkmark : .none) { [weak self] in
-                
-                guard let self = self else {
-                    return
-                }
-                
-                self.viewModel.roomCreationParameters.joinRule = .public
-                self.updateSections()
-                //  scroll bottom to show user new fields
-                DispatchQueue.main.async {
-                    self.mainTableView.vc_scrollToBottom()
-                }
-            }
             let rows: [Row]
             switch viewModel.actionType {
             case .createAndAddToSpace:
-                rows = [row_4_0, row_4_1, row_4_2]
+                rows = [row_4_0, row_4_1]
             case .createOnly:
-                rows = [row_4_0, row_4_2]
+                rows = [row_4_0]
             }
             let footer: String
             switch viewModel.roomCreationParameters.joinRule {
@@ -178,7 +166,7 @@ final class EnterNewRoomDetailsViewController: UIViewController {
             case .restricted:
                 footer = VectorL10n.createRoomSectionFooterTypeRestricted
             default:
-                footer = VectorL10n.createRoomSectionFooterTypePublic
+                footer = VectorL10n.createRoomSectionFooterTypePrivate
             }
             section4 = Section(header: VectorL10n.createRoomSectionHeaderType,
                                    rows: rows,
@@ -199,38 +187,7 @@ final class EnterNewRoomDetailsViewController: UIViewController {
             tmpSections.append(section4)
         }
         
-        if viewModel.roomCreationParameters.joinRule == .public {
-            let row_5_0 = Row(type: .withSwitch(isOn: viewModel.roomCreationParameters.showInDirectory, onValueChanged: { [weak self] (theSwitch) in
-                self?.viewModel.roomCreationParameters.showInDirectory = theSwitch.isOn
-            }), text: VectorL10n.createRoomShowInDirectory, accessoryType: .none) {
-                // no-op
-            }
-
-            let rows: [Row]
-            if viewModel.actionType == .createAndAddToSpace {
-                let row_5_1 = Row(type: .withSwitch(isOn: viewModel.roomCreationParameters.isRoomSuggested, onValueChanged: { [weak self] (theSwitch) in
-                    self?.viewModel.roomCreationParameters.isRoomSuggested = theSwitch.isOn
-                }), text: VectorL10n.createRoomSuggestRoom, accessoryType: .none) {
-                    // no-op
-                }
-                rows = [row_5_0, row_5_1]
-            } else {
-                rows = [row_5_0]
-            }
-            
-            let section5 = Section(header: VectorL10n.createRoomPromotionHeader,
-                                   rows: rows,
-                                   footer: VectorL10n.createRoomShowInDirectoryFooter)
-            
-            let row_6_0 = Row(type: .textField(tag: Constants.roomAddressTextFieldTag, placeholder: VectorL10n.createRoomPlaceholderAddress, delegate: self), text: viewModel.roomCreationParameters.address, accessoryType: .none) {
-                
-            }
-            let section6 = Section(header: VectorL10n.createRoomSectionHeaderAddress,
-                                   rows: [row_6_0],
-                                   footer: nil)
-            
-            tmpSections.append(contentsOf: [section5, section6])
-        }
+        // BatChat: hide public-room directory promotion & address sections (only relevant for public rooms).
         
         if viewModel.roomCreationParameters.joinRule == .restricted {
             let row_5_0 = Row(type: .withSwitch(isOn: viewModel.roomCreationParameters.isRoomSuggested, onValueChanged: { [weak self] (theSwitch) in

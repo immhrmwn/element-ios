@@ -1299,7 +1299,7 @@
 
 // MARK: - Create Room
 
-"create_room_title" = "Ruangan Baru";
+"create_room_title" = "Grup Baru";
 "searchable_directory_x_network" = "Jaringan %@";
 "biometrics_desetup_disable_button_title_x" = "Nonaktifkan %@";
 "biometrics_desetup_title_x" = "Nonaktifkan %@";
