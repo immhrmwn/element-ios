@@ -331,18 +331,13 @@ class AllChatsCoordinator: NSObject, SplitViewMasterCoordinatorProtocol {
         })
         
         var subMenuActions: [UIAction] = []
-        if BuildSettings.sideMenuShowInviteFriends {
-            subMenuActions.append(UIAction(title: VectorL10n.sideMenuActionInviteFriends, image: UIImage(systemName: "square.and.arrow.up.fill")) { [weak self] action in
-                guard let self = self else { return }
-                self.showInviteFriends(from: self.avatarMenuButton)
-            })
-        }
-
-        subMenuActions.append(UIAction(title: VectorL10n.sideMenuActionFeedback, image: UIImage(systemName: "questionmark.circle")) { [weak self] action in
-            self?.showBugReport()
-        })
+        // BatChat: hide "Invite friends" and "Feedback" from the user avatar menu.
+        // Only keep the Sign Out item below.
+        // (Leave subMenuActions empty so no top inline menu is shown.)
         
-        actions.append(UIMenu(title: "", options: .displayInline, children: subMenuActions))
+        if !subMenuActions.isEmpty {
+            actions.append(UIMenu(title: "", options: .displayInline, children: subMenuActions))
+        }
         actions.append(UIMenu(title: "", options: .displayInline, children: [
             UIAction(title: VectorL10n.settingsSignOut, image: UIImage(systemName: "rectangle.portrait.and.arrow.right.fill"), attributes: .destructive) { [weak self] action in
                 self?.signOut()

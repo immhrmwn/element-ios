@@ -101,14 +101,9 @@ final class SideMenuViewModel: SideMenuViewModelType {
         
         var sideMenuItems: [SideMenuItem] = []
         
-        if BuildSettings.sideMenuShowInviteFriends {
-            sideMenuItems += [.inviteFriends]
-        }
-        
-        sideMenuItems += [
-            .settings,
-            .feedback
-        ]
+        // BatChat: only show Settings and Logout/Exit entries here – hide
+        // "Invite friends" and "Feedback" from the side menu.
+        sideMenuItems += [.settings]
         
         // Hide app version
         let appVersion: String? = nil

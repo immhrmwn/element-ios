@@ -249,7 +249,8 @@ final class BuildSettings: NSObject {
     
     // MARK: - Side Menu
     static let enableSideMenu: Bool = true && !newAppLayoutEnabled
-    static let sideMenuShowInviteFriends: Bool = true
+    // BatChat: hide "Invite friends" entry from the user menu.
+    static let sideMenuShowInviteFriends: Bool = false
 
     /// Whether to read the `io.element.functional_members` state event and exclude any service members when computing a room's name and avatar.
     static let supportFunctionalMembers: Bool = true
