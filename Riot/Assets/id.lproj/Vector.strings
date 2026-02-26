@@ -219,7 +219,7 @@
 "search_no_result" = "Tidak ada hasil";
 "people_no_conversation" = "Tidak ada obrolan";
 "room_recents_join_room" = "Bergabung ke ruangan";
-"room_recents_create_empty_room" = "Buat ruangan";
+"room_recents_create_empty_room" = "Buat grup";
 "room_recents_start_chat_with" = "Mulai obrolan";
 "room_recents_server_notice_section" = "PEMBERITAHUAN SISTEM";
 "room_recents_low_priority_section" = "PRIORITAS RENDAH";

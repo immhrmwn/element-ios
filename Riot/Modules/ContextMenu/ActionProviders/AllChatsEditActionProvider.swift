@@ -42,23 +42,21 @@ class AllChatsEditActionProvider {
     
     var menu: UIMenu {
         guard parentSpace != nil else {
-            var createActions = [
-                self.createRoomAction,
-                self.startChatAction
+            // BatChat: only show "Create room" as the main action on home.
+            var createActions: [UIAction] = [
+                self.createRoomAction
             ]
             if rootSpaceCount > 0 {
+                // Optionally keep "Create space" when spaces exist.
                 createActions.insert(self.createSpaceAction, at: 0)
             }
             return UIMenu(title: "", children: [
-                self.exploreRoomsAction,
                 UIMenu(title: "", options: .displayInline, children: createActions)
             ])
         }
         
+        // In a space: only show "Create room" (and optionally create subspace) – hide Explore rooms.
         return UIMenu(title: "", children: [
-            UIMenu(title: "", options: .displayInline, children: [
-                self.exploreRoomsAction
-            ]),
             UIMenu(title: "", options: .displayInline, children: [
                 self.createSpaceAction,
                 self.createRoomAction
