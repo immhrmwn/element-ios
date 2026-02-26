@@ -280,7 +280,7 @@ static CGSize kThreadListBarButtonItemImageSize;
                                                   radius:10
                                                  opacity:0.28];
     
-    // Attach UIAction-based menu on supported iOS versions
+    // Attach UIAction-based menu
     if (@available(iOS 14.0, *))
     {
         __weak typeof(self) weakSelf = self;
@@ -341,9 +341,72 @@ static CGSize kThreadListBarButtonItemImageSize;
     }
     else
     {
-        // Fallback for older iOS: show legacy action sheet
         [disappearingMessagesFabButton addTarget:self action:@selector(disappearingMessagesFabTapped:) forControlEvents:UIControlEventTouchUpInside];
     }
+    
+    [self refreshDisappearingMessagesFabButtonAppearance];
+}
+
+- (void)refreshDisappearingMessagesFabButtonAppearance
+{
+    if (!disappearingMessagesFabButton || !self.roomDataSource.roomId)
+    {
+        return;
+    }
+    NSString *roomId = self.roomDataSource.roomId;
+    NSNumber *seconds = [RiotSettings.shared roomRetentionMaxLifetimeSecondsForRoomId:roomId];
+    if (seconds == nil)
+    {
+        MXRoom *room = [self.mainSession roomWithRoomId:roomId];
+        if (room && room.dangerousSyncState)
+        {
+            seconds = [room.dangerousSyncState vc_maxLifetimeSeconds];
+        }
+    }
+    
+    disappearingMessagesFabButton.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    
+    if (!seconds || seconds.integerValue <= 0)
+    {
+        // Off: show clock icon
+        [disappearingMessagesFabButton setTitle:nil forState:UIControlStateNormal];
+        UIImage *icon = [UIImage systemImageNamed:@"clock"];
+        if (icon)
+        {
+            icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        [disappearingMessagesFabButton setImage:icon forState:UIControlStateNormal];
+    }
+    else
+    {
+        // Show short duration text: 1 m, 5 m, 1 h, 1 d, 1 w, 1 b
+        NSString *label;
+        switch (seconds.integerValue)
+        {
+            case 60: label = @"1 m"; break;
+            case 5 * 60: label = @"5 m"; break;
+            case 60 * 60: label = @"1 h"; break;
+            case 24 * 60 * 60: label = @"1 d"; break;
+            case 7 * 24 * 60 * 60: label = @"1 w"; break;
+            case 30 * 24 * 60 * 60: label = @"1 b"; break;
+            default: label = nil;
+        }
+        if (label)
+        {
+            [disappearingMessagesFabButton setTitle:label forState:UIControlStateNormal];
+            [disappearingMessagesFabButton setImage:nil forState:UIControlStateNormal];
+        }
+        else
+        {
+            [disappearingMessagesFabButton setTitle:nil forState:UIControlStateNormal];
+            UIImage *icon = [UIImage systemImageNamed:@"clock"];
+            if (icon) icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+            [disappearingMessagesFabButton setImage:icon forState:UIControlStateNormal];
+        }
+    }
+    
+    disappearingMessagesFabButton.tintColor = ThemeService.shared.theme.textPrimaryColor;
+    [disappearingMessagesFabButton setTitleColor:ThemeService.shared.theme.textPrimaryColor forState:UIControlStateNormal];
 }
 
 - (void)applyDisappearingMessagesRetentionSeconds:(NSNumber *)seconds
@@ -397,7 +460,6 @@ static CGSize kThreadListBarButtonItemImageSize;
 
 - (void)disappearingMessagesFabTapped:(id)sender
 {
-    // Legacy fallback: show action sheet using same helper
     __weak typeof(self) weakSelf = self;
     UIAlertController *picker = [UIAlertController alertControllerWithTitle:nil
                                                                     message:nil
@@ -631,6 +693,7 @@ static CGSize kThreadListBarButtonItemImageSize;
         if ([notifRoomId isKindOfClass:NSString.class] && [notifRoomId isEqualToString:myRoomId])
         {
             [self updateDisappearingMessagesBannerViewVisibility];
+            [self refreshDisappearingMessagesFabButtonAppearance];
         }
     }];
     
@@ -725,13 +788,7 @@ static CGSize kThreadListBarButtonItemImageSize;
                                                       offset:CGSizeMake(0, 6)
                                                       radius:10
                                                      opacity:0.28];
-        UIImage *icon = [UIImage systemImageNamed:@"clock"];
-        if (icon)
-        {
-            icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        }
-        [disappearingMessagesFabButton setImage:icon forState:UIControlStateNormal];
-        disappearingMessagesFabButton.tintColor = ThemeService.shared.theme.textPrimaryColor;
+        [self refreshDisappearingMessagesFabButtonAppearance];
     }
     
     [self updateThreadListBarButtonBadgeWith:self.mainSession.threadingService];
@@ -2974,6 +3031,7 @@ static CGSize kThreadListBarButtonItemImageSize;
     
     [self updateLiveLocationBannerViewVisibility];
     [self updateDisappearingMessagesBannerViewVisibility];
+    [self refreshDisappearingMessagesFabButtonAppearance];
     
     // BatChat: keep "Geser untuk mengakhiri panggilan" above the disappearing-messages banner.
     if (self.removeJitsiWidgetContainer && !self.removeJitsiWidgetContainer.hidden)
