@@ -2974,6 +2974,12 @@ static CGSize kThreadListBarButtonItemImageSize;
     
     [self updateLiveLocationBannerViewVisibility];
     [self updateDisappearingMessagesBannerViewVisibility];
+    
+    // BatChat: keep "Geser untuk mengakhiri panggilan" above the disappearing-messages banner.
+    if (self.removeJitsiWidgetContainer && !self.removeJitsiWidgetContainer.hidden)
+    {
+        [self.view bringSubviewToFront:self.removeJitsiWidgetContainer.superview];
+    }
 }
 
 - (void)showEmojiPickerForEventId:(NSString *)eventId
@@ -6897,6 +6903,8 @@ static CGSize kThreadListBarButtonItemImageSize;
             [self.removeJitsiWidgetView reset];
             self.removeJitsiWidgetContainer.hidden = NO;
             self.removeJitsiWidgetView.delegate = self;
+            // BatChat: ensure "Geser untuk mengakhiri panggilan" is above the disappearing-messages banner.
+            [self.view bringSubviewToFront:self.removeJitsiWidgetContainer.superview];
         }
         else
         {
