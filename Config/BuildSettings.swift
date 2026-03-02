@@ -370,6 +370,7 @@ final class BuildSettings: NSObject {
     static let roomSettingsScreenShowAddressSettings: Bool = false
     static let roomSettingsScreenShowAdvancedSettings: Bool = true
     static let roomSettingsScreenAdvancedShowEncryptToVerifiedOption: Bool = true
+    static let roomSettingsScreenAdvancedShowRoomId: Bool = false
 
     // MARK: - Room Member Screen
     

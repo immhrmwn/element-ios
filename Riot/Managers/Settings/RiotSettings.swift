@@ -385,6 +385,9 @@ final class RiotSettings: NSObject {
     @UserDefault(key: "roomSettingsScreenAdvancedShowEncryptToVerifiedOption", defaultValue: BuildSettings.roomSettingsScreenAdvancedShowEncryptToVerifiedOption, storage: defaults)
     var roomSettingsScreenAdvancedShowEncryptToVerifiedOption
     
+    @UserDefault(key: "roomSettingsScreenAdvancedShowRoomId", defaultValue: BuildSettings.roomSettingsScreenAdvancedShowRoomId, storage: defaults)
+    var roomSettingsScreenAdvancedShowRoomId
+    
     // MARK: - Unified Search
     
     @UserDefault(key: "unifiedSearchScreenShowPublicDirectory", defaultValue: BuildSettings.unifiedSearchScreenShowPublicDirectory, storage: defaults)

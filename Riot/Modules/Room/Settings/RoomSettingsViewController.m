@@ -645,7 +645,10 @@ NSString *const kRoomSettingsAdvancedE2eEnabledCellViewIdentifier = @"kRoomSetti
     {
         Section *sectionAdvanced = [Section sectionWithTag:SECTION_TAG_BANNED_ADVANCED];
         
-        [sectionAdvanced addRowWithTag:ROOM_SETTINGS_ADVANCED_ROOM_ID];
+        if (RiotSettings.shared.roomSettingsScreenAdvancedShowRoomId)
+        {
+            [sectionAdvanced addRowWithTag:ROOM_SETTINGS_ADVANCED_ROOM_ID];
+        }
         if (mxRoom.mxSession.crypto)
         {
             if (mxRoom.summary.isEncrypted)
