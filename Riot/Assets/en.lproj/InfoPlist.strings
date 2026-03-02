@@ -15,11 +15,11 @@
  */
 
 // Permissions usage explanations
-"NSCameraUsageDescription" = "The camera is used to make video calls, or take and upload photos and videos.";
-"NSPhotoLibraryUsageDescription" = "Allow access to photos to upload photos and videos from your library.";
-"NSMicrophoneUsageDescription" = "Element needs to access your microphone to make and receive calls, take videos, and record voice messages.";
-"NSContactsUsageDescription" = "They will be shared with your identity server to help find your contacts on Matrix.";
-"NSCalendarsUsageDescription" = "See your scheduled meetings in the app.";
-"NSFaceIDUsageDescription" = "Face ID is used to access your app.";
-"NSLocationWhenInUseUsageDescription" = "When you share your location to people, Element needs access to show them a map.";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "When you share your location to people, Element needs access to show them a map.";
+"NSCameraUsageDescription" = "BatChat requires access to the camera so you can take photos to send in chat conversations and participate in video calls with other users.";
+"NSPhotoLibraryUsageDescription" = "BatChat requires access to your Photo Library so you can manually select and share specific photos or videos within chat conversations.";
+"NSMicrophoneUsageDescription" = "BatChat requires access to the microphone so you can record and send voice messages and participate in audio or video calls.";
+"NSContactsUsageDescription" = "BatChat requires access to your contacts so you can find and connect with people you already know. Contact information is used only to help match users within the app.";
+"NSCalendarsUsageDescription" = "BatChat requires access to your calendar to display your scheduled meetings inside the app when you choose to enable this feature.";
+"NSFaceIDUsageDescription" = "BatChat uses Face ID to securely unlock the app and protect your conversations.";
+"NSLocationWhenInUseUsageDescription" = "BatChat requires access to your location only when you choose to share your current location in a conversation.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "BatChat requires access to your location only when you choose to share your current location in a conversation.";
