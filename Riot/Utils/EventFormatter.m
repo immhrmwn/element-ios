@@ -477,14 +477,7 @@ static NSString *const kEventFormatterTimeFormat = @"HH:mm";
         self.showEditionMention = YES;
         self.editionMentionTextColor = ThemeService.shared.theme.textSecondaryColor;
         
-        self.defaultTextFont = [UIFont systemFontOfSize:15];
-        self.prefixTextFont = [UIFont boldSystemFontOfSize:15];
-        self.bingTextFont = [UIFont systemFontOfSize:15 weight:UIFontWeightMedium];
-        self.stateEventTextFont = [UIFont italicSystemFontOfSize:15];
-        self.callNoticesTextFont = [UIFont italicSystemFontOfSize:15];
-        self.encryptedMessagesTextFont = [UIFont italicSystemFontOfSize:15];
-        self.emojiOnlyTextFont = [UIFont systemFontOfSize:48];
-        self.editionMentionTextFont = [UIFont systemFontOfSize:12];
+        [self applyDynamicTypeFonts];
         
         // Handle space and video room types, enables their display in the room list
         defaultRoomSummaryUpdater.showRoomTypeStrings = @[
@@ -495,11 +488,39 @@ static NSString *const kEventFormatterTimeFormat = @"HH:mm";
     return self;
 }
 
+- (void)applyDynamicTypeFonts
+{
+    UIFont *bodyFont = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    UIFont *captionFont = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption1];
+    CGFloat bodyPointSize = bodyFont.pointSize;
+    
+    UIFontDescriptor *bodyDescriptor = [bodyFont fontDescriptor];
+    UIFontDescriptor *italicBodyDescriptor = [bodyDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic];
+    UIFont *italicBodyFont = italicBodyDescriptor ? [UIFont fontWithDescriptor:italicBodyDescriptor size:0] : bodyFont;
+    if (!italicBodyFont) {
+        italicBodyFont = bodyFont;
+    }
+    
+    self.defaultTextFont = bodyFont;
+    self.prefixTextFont = [UIFont systemFontOfSize:bodyPointSize weight:UIFontWeightBold];
+    self.bingTextFont = [UIFont systemFontOfSize:bodyPointSize weight:UIFontWeightSemibold];
+    self.stateEventTextFont = italicBodyFont;
+    self.callNoticesTextFont = italicBodyFont;
+    self.encryptedMessagesTextFont = italicBodyFont;
+    self.emojiOnlyTextFont = [UIFont systemFontOfSize:bodyPointSize * 2.5]; // scale emoji with body size
+    self.editionMentionTextFont = captionFont;
+}
+
+- (void)refreshFontsForContentSizeCategory
+{
+    [self applyDynamicTypeFonts];
+}
+
 - (NSDictionary*)stringAttributesForEventTimestamp
 {
     return @{
              NSForegroundColorAttributeName : [UIColor lightGrayColor],
-             NSFontAttributeName: [UIFont systemFontOfSize:10]
+             NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCaption2]
              };
 }
 

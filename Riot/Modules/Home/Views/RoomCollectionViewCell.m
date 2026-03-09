@@ -105,8 +105,10 @@ Please see LICENSE in the repository root for full details.
             self.badgeLabel.badgeColor = ThemeService.shared.theme.noticeColor;
             self.badgeLabel.text = @"!";
 
-            // Use bold font for the room title
-            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
+            // Use bold font for the room title (Dynamic Type)
+            CGFloat titleSize = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline].pointSize;
+            UIFont *titleFont = [UIFont systemFontOfSize:titleSize weight:UIFontWeightBold];
+            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = titleFont;
         }
         else if (roomCellData.hasUnread)
         {
@@ -121,13 +123,17 @@ Please see LICENSE in the repository root for full details.
                 [accessibilityLabel appendFormat:@", %@", newMessagesLabel];
             }
             
-            // Use bold font for the room title
-            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
+            // Use bold font for the room title (Dynamic Type)
+            CGFloat titleSize = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline].pointSize;
+            UIFont *titleFont = [UIFont systemFontOfSize:titleSize weight:UIFontWeightBold];
+            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = titleFont;
         }
         else
         {
-            // The room title is not bold anymore            
-            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+            // The room title is not bold anymore (Dynamic Type)
+            CGFloat titleSize = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline].pointSize;
+            UIFont *titleFont = [UIFont systemFontOfSize:titleSize weight:UIFontWeightMedium];
+            self.roomTitle.font = self.roomTitle1.font = self.roomTitle2.font = titleFont;
             
         }
         

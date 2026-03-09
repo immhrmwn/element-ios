@@ -105,15 +105,17 @@ Please see LICENSE in the repository root for full details.
                 self.missedNotifAndUnreadIndicator.backgroundColor = ThemeService.shared.theme.unreadRoomIndentColor;
             }
 
-            // Use bold font for the room title
-            self.roomTitle.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
+            // Use bold font for the room title (Dynamic Type)
+            CGFloat titleSize = [UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize;
+            self.roomTitle.font = [UIFont systemFontOfSize:titleSize weight:UIFontWeightBold];
         }
         else
         {
             self.lastEventDate.textColor = ThemeService.shared.theme.textSecondaryColor;
 
-            // The room title is not bold anymore
-            self.roomTitle.font = [UIFont systemFontOfSize:17 weight:UIFontWeightMedium];
+            // The room title is not bold anymore (Dynamic Type)
+            CGFloat titleSize = [UIFont preferredFontForTextStyle:UIFontTextStyleBody].pointSize;
+            self.roomTitle.font = [UIFont systemFontOfSize:titleSize weight:UIFontWeightMedium];
         }
 
         [self.roomAvatar vc_setRoomAvatarImageWith:roomCellData.avatarUrl

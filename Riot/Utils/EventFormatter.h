@@ -47,6 +47,12 @@ FOUNDATION_EXPORT NSString *const EventFormatterEditedEventLinkAction;
 @property (nonatomic) UIFont *editionMentionTextFont;
 
 /**
+ Call when the user changes the preferred content size (Settings > Display & Text Size)
+ so that chat message text is re-rendered with the new Dynamic Type size.
+ */
+- (void)refreshFontsForContentSizeCategory;
+
+/**
  String attributes for event timestamp displayed in chat history.
  */
 - (NSDictionary*)stringAttributesForEventTimestamp;

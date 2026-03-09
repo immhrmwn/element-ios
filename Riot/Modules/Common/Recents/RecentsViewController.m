@@ -61,6 +61,9 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
     // Observe kThemeServiceDidChangeThemeNotification to handle user interface theme change.
     __weak id kThemeServiceDidChangeThemeNotificationObserver;
     
+    // Observe content size category (Dynamic Type) changes to refresh room list fonts.
+    __weak id contentSizeCategoryDidChangeObserver;
+    
     // Cancel handler of any ongoing loading indicator
     UserIndicatorCancel loadingIndicatorCancel;
     
@@ -192,6 +195,12 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
         
     }];
     [self userInterfaceThemeDidChange];
+    
+    // Observe Dynamic Type (text size) changes to refresh room name fonts.
+    contentSizeCategoryDidChangeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIContentSizeCategoryDidChangeNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *notif) {
+        MXStrongifyAndReturnIfNil(self);
+        [self.recentsTableView reloadData];
+    }];
 }
 
 - (void)userInterfaceThemeDidChange
@@ -250,6 +259,11 @@ NSString *const RecentsViewControllerDataReadyNotification = @"RecentsViewContro
     {
         [[NSNotificationCenter defaultCenter] removeObserver:kThemeServiceDidChangeThemeNotificationObserver];
         kThemeServiceDidChangeThemeNotificationObserver = nil;
+    }
+    if (contentSizeCategoryDidChangeObserver)
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:contentSizeCategoryDidChangeObserver];
+        contentSizeCategoryDidChangeObserver = nil;
     }
 }
 

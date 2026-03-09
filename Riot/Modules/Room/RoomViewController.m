@@ -168,6 +168,9 @@ static CGSize kThreadListBarButtonItemImageSize;
     // Observe room retention (disappearing messages) updates to refresh banner.
     __weak id roomRetentionDidUpdateObserver;
     
+    // Observe content size category (Dynamic Type) changes so chat text is resized.
+    __weak id contentSizeCategoryDidChangeObserver;
+    
     // Listener for `m.room.tombstone` event type
     __weak id tombstoneEventNotificationsListener;
 
@@ -694,6 +697,17 @@ static CGSize kThreadListBarButtonItemImageSize;
         {
             [self updateDisappearingMessagesBannerViewVisibility];
             [self refreshDisappearingMessagesFabButtonAppearance];
+        }
+    }];
+    
+    // Observe Dynamic Type (text size) changes so chat message text is resized.
+    contentSizeCategoryDidChangeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIContentSizeCategoryDidChangeNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *notif) {
+        MXStrongifyAndReturnIfNil(self);
+        if ([self.roomDataSource.eventFormatter respondsToSelector:@selector(refreshFontsForContentSizeCategory)])
+        {
+            [(EventFormatter *)self.roomDataSource.eventFormatter refreshFontsForContentSizeCategory];
+            [self.roomDataSource reload];
+            [self reloadBubblesTable:YES];
         }
     }];
     
@@ -1823,6 +1837,11 @@ static CGSize kThreadListBarButtonItemImageSize;
     {
         [[NSNotificationCenter defaultCenter] removeObserver:roomRetentionDidUpdateObserver];
         roomRetentionDidUpdateObserver = nil;
+    }
+    if (contentSizeCategoryDidChangeObserver)
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:contentSizeCategoryDidChangeObserver];
+        contentSizeCategoryDidChangeObserver = nil;
     }
     
     [self removeCallNotificationsListeners];
