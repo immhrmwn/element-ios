@@ -69,12 +69,17 @@ Please see LICENSE in the repository root for full details.
         // Report computed values as is
         self.roomTitle.text = roomCellData.roomDisplayname;
         self.lastEventDate.text = roomCellData.lastEventDate;
+        self.lastEventDate.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCaption1];
         
-        // Manage lastEventAttributedTextMessage optional property
+        // Manage lastEventAttributedTextMessage optional property (Dynamic Type for last message)
+        UIFont *lastMessageFont = [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
+        self.lastEventDescription.font = lastMessageFont;
         if (!roomCellData.roomSummary.spaceChildInfo && [roomCellData respondsToSelector:@selector(lastEventAttributedTextMessage)])
         {
-            // Attempt to correct the attributed string colors to match the current theme
-            self.lastEventDescription.attributedText = [roomCellData.lastEventAttributedTextMessage fixForegroundColor];
+            NSAttributedString *fixedColor = [roomCellData.lastEventAttributedTextMessage fixForegroundColor];
+            NSMutableAttributedString *mutable = [fixedColor mutableCopy];
+            [mutable addAttribute:NSFontAttributeName value:lastMessageFont range:NSMakeRange(0, mutable.length)];
+            self.lastEventDescription.attributedText = mutable;
         }
         else
         {

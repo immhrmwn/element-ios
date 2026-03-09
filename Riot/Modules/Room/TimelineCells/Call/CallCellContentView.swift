@@ -13,6 +13,7 @@ class CallCellContentView: UIView {
     private enum Constants {
         static let callSummaryWithBottomViewHeight: CGFloat = 20
         static let callSummaryStandaloneViewHeight: CGFloat = 20 + 44
+        static let callSummaryCompactStandaloneHeight: CGFloat = 20 + 8 + 8  // status row + 8pt top/bottom padding
     }
     
     @IBOutlet private weak var paginationTitleView: UIView!
@@ -38,6 +39,13 @@ class CallCellContentView: UIView {
     /// Inter-item spacing in the main content stack view
     let interItemSpacing: CGFloat = 8
     
+    /// When true, hide avatar and room/caller name for a compact call history layout.
+    var isCompactForCallHistory: Bool = false {
+        didSet {
+            applyCompactLayout()
+        }
+    }
+    
     var statusText: String? {
         didSet {
             callStatusLabel.text = statusText
@@ -56,10 +64,25 @@ class CallCellContentView: UIView {
     
     func relayoutCallSummary() {
         if bottomContainerView.subviews.isEmpty {
-            callSummaryHeightConstraint.constant = Constants.callSummaryStandaloneViewHeight
+            callSummaryHeightConstraint.constant = isCompactForCallHistory
+                ? Constants.callSummaryCompactStandaloneHeight
+                : Constants.callSummaryStandaloneViewHeight
         } else {
             callSummaryHeightConstraint.constant = Constants.callSummaryWithBottomViewHeight
         }
+    }
+    
+    private func applyCompactLayout() {
+        avatarImageView.isHidden = isCompactForCallHistory
+        callerNameLabel.isHidden = isCompactForCallHistory
+        bubbleInfoContainer.isHidden = isCompactForCallHistory
+        
+        if let stackView = bgView?.subviews.first as? UIStackView {
+            stackView.arrangedSubviews.first?.isHidden = isCompactForCallHistory
+            stackView.spacing = isCompactForCallHistory ? 4 : 8
+        }
+        
+        relayoutCallSummary()
     }
     
     func render(_ cellData: MXKCellData) {

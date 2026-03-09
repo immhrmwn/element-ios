@@ -329,6 +329,7 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
         super.render(cellData)
         
         viewState = .unknown
+        innerContentView.isCompactForCallHistory = false
         
         guard let bubbleCellData = cellData as? RoomBubbleCellData else {
             return
@@ -386,28 +387,34 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
             //  check events include a reject event
             if let rejectEvent = events.first(where: { $0.eventType == .callReject }) {
                 configureForRejectedCall(withEvent: rejectEvent, bubbleCellData: bubbleCellData)
+                innerContentView.isCompactForCallHistory = (viewState == .ended)
                 return
             }
             
             //  check events include an answer event
             if !events.contains(where: { $0.eventType == .callAnswer }) {
                 configureForUnansweredCall()
+                innerContentView.isCompactForCallHistory = (viewState == .ended)
                 return
             }
             
             //  check events include a hangup event
             if let hangupEvent = events.first(where: { $0.eventType == .callHangup }) {
                 configureForHangupCall(withEvent: hangupEvent)
+                innerContentView.isCompactForCallHistory = (viewState == .ended)
                 return
             }
             
             //  there is no reject or hangup event, we can just say this call has ended
             viewState = .ended
             updateStatusTextForEndedCall()
+            innerContentView.isCompactForCallHistory = true
             return
         }
         
         configure(withCall: call)
+        
+        innerContentView.isCompactForCallHistory = (viewState == .ended)
     }
     
     private func callDuration(from events: [MXEvent]) -> TimeInterval {

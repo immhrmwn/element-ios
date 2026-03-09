@@ -193,6 +193,7 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
         super.render(cellData)
         
         viewState = .unknown
+        innerContentView.isCompactForCallHistory = false
         
         guard let bubbleCellData = cellData as? RoomBubbleCellData else {
             return
@@ -265,6 +266,7 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
             with: roomState) else {
                 self.viewState = .ended
                 self.updateStatusTextForEndedCall()
+                self.innerContentView.isCompactForCallHistory = true
                 return
             }
             
@@ -277,6 +279,7 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
             guard let widget = widgets.first(where: { $0.widgetId == widgetId }) else {
                 self.viewState = .ended
                 self.updateStatusTextForEndedCall()
+                self.innerContentView.isCompactForCallHistory = true
                 return
             }
 
@@ -302,6 +305,7 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
                 self.viewState = .ended
                 self.updateStatusTextForEndedCall()
             }
+            self.innerContentView.isCompactForCallHistory = (self.viewState == .ended)
         }
     }
     

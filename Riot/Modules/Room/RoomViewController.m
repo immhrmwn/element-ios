@@ -188,6 +188,9 @@ static CGSize kThreadListBarButtonItemImageSize;
     
     // Floating action button to quickly change disappearing messages for this room.
     UIButton *disappearingMessagesFabButton;
+    
+    // Last content size category used for chat fonts (to refresh when entering room after text size change).
+    NSString *lastContentSizeCategoryForChat;
 }
 
 @property (nonatomic, strong) RemoveJitsiWidgetView *removeJitsiWidgetView;
@@ -708,6 +711,7 @@ static CGSize kThreadListBarButtonItemImageSize;
             [(EventFormatter *)self.roomDataSource.eventFormatter refreshFontsForContentSizeCategory];
             [self.roomDataSource reload];
             [self reloadBubblesTable:YES];
+            self->lastContentSizeCategoryForChat = [UIApplication sharedApplication].preferredContentSizeCategory;
         }
     }];
     
@@ -827,6 +831,16 @@ static CGSize kThreadListBarButtonItemImageSize;
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    
+    // Refresh chat text size when content size category changed (e.g. user resized text on room list, then entered room).
+    NSString *currentCategory = [UIApplication sharedApplication].preferredContentSizeCategory;
+    if (self.roomDataSource && (![lastContentSizeCategoryForChat isEqual:currentCategory]) && [self.roomDataSource.eventFormatter respondsToSelector:@selector(refreshFontsForContentSizeCategory)])
+    {
+        [(EventFormatter *)self.roomDataSource.eventFormatter refreshFontsForContentSizeCategory];
+        [self.roomDataSource reload];
+        [self reloadBubblesTable:YES];
+        lastContentSizeCategoryForChat = currentCategory;
+    }
     
     // Refresh the room title view
     [self refreshRoomTitle];
