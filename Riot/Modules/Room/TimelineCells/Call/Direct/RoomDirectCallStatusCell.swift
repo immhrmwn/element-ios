@@ -84,7 +84,23 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
     }
     
     private func updateBottomContentView() {
-        bottomContentView = bottomView(for: viewState)
+        let bottomViewResult = makeBottomView(for: viewState)
+        if let view = bottomViewResult {
+            innerContentView.showInlineCallBackButton = false
+            self.bottomContentView = view
+        } else if isCallHistoryStateWithCTA(viewState) {
+            innerContentView.showInlineCallBackButton = true
+            innerContentView.inlineCallBackIcon = callButtonIcon
+            innerContentView.inlineCallBackAccessibilityLabel = VectorL10n.eventFormatterCallBack
+            innerContentView.onInlineCallBackTapped = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.cell(self, didRecognizeAction: Self.callBackAction, userInfo: self.actionUserInfo)
+            }
+            self.bottomContentView = nil
+        } else {
+            innerContentView.showInlineCallBackButton = false
+            self.bottomContentView = nil
+        }
     }
     
     private var callButtonIcon: UIImage {
@@ -102,73 +118,38 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
         return nil
     }
     
-    private func bottomView(for state: ViewState) -> UIView? {
+    private func makeBottomView(for state: ViewState) -> UIView? {
         switch state {
-        case .unknown:
+        case .unknown, .declined, .missed, .failed, .ended:
             return nil
         case .ringing:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            
-            view.firstButton.style = .negative
-            view.firstButton.setTitle(VectorL10n.eventFormatterCallDecline, for: .normal)
-            view.firstButton.setImage(Asset.Images.voiceCallHangupIcon.image, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(declineCallAction(_:)), for: .touchUpInside)
-            
-            view.secondButton.style = .positive
-            view.secondButton.setTitle(VectorL10n.eventFormatterCallAnswer, for: .normal)
-            view.secondButton.setImage(callButtonIcon, for: .normal)
-            view.secondButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.secondButton.addTarget(self, action: #selector(answerCallAction(_:)), for: .touchUpInside)
-            
-            return view
+            return makeRingingBottomView()
         case .active:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            view.secondButton.isHidden = true
-            
-            view.firstButton.style = .negative
-            view.firstButton.setTitle(VectorL10n.eventFormatterCallEndCall, for: .normal)
-            view.firstButton.setImage(Asset.Images.voiceCallHangupIcon.image, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(endCallAction(_:)), for: .touchUpInside)
-            
-            return view
-        case .declined:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            view.secondButton.isHidden = true
-            
-            view.firstButton.style = .positive
-            view.firstButton.setTitle(VectorL10n.eventFormatterCallBack, for: .normal)
-            view.firstButton.setImage(callButtonIcon, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(callBackAction(_:)), for: .touchUpInside)
-            
-            return view
-        case .missed:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            view.secondButton.isHidden = true
-            
-            view.firstButton.style = .positive
-            view.firstButton.setTitle(VectorL10n.eventFormatterCallBack, for: .normal)
-            view.firstButton.setImage(callButtonIcon, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(callBackAction(_:)), for: .touchUpInside)
-            
-            return view
-        case .ended:
-            return nil
-        case .failed:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            view.secondButton.isHidden = true
-            
-            view.firstButton.style = .positive
-            view.firstButton.setTitle(VectorL10n.eventFormatterCallRetry, for: .normal)
-            view.firstButton.setImage(callButtonIcon, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(callBackAction(_:)), for: .touchUpInside)
-            
-            return view
+            return makeActiveBottomView()
         }
+    }
+    
+    private func makeRingingBottomView() -> UIView {
+        let view = HorizontalButtonsContainerView.loadFromNib()
+        view.firstButton.style = .negative
+        view.firstButton.setTitle(VectorL10n.eventFormatterCallDecline, for: .normal)
+        view.firstButton.setImage(Asset.Images.voiceCallHangupIcon.image, for: .normal)
+        view.firstButton.addTarget(self, action: #selector(declineCallAction(_:)), for: .touchUpInside)
+        view.secondButton.style = .positive
+        view.secondButton.setTitle(VectorL10n.eventFormatterCallAnswer, for: .normal)
+        view.secondButton.setImage(callButtonIcon, for: .normal)
+        view.secondButton.addTarget(self, action: #selector(answerCallAction(_:)), for: .touchUpInside)
+        return view
+    }
+    
+    private func makeActiveBottomView() -> UIView {
+        let view = HorizontalButtonsContainerView.loadFromNib()
+        view.secondButton.isHidden = true
+        view.firstButton.style = .negative
+        view.firstButton.setTitle(VectorL10n.eventFormatterCallEndCall, for: .normal)
+        view.firstButton.setImage(Asset.Images.voiceCallHangupIcon.image, for: .normal)
+        view.firstButton.addTarget(self, action: #selector(endCallAction(_:)), for: .touchUpInside)
+        return view
     }
     
     private func configure(withCall call: MXCall) {
@@ -293,6 +274,27 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
         }
     }
     
+    /// Returns true for call history states (ended, missed, declined, failed) that use compact layout.
+    /// Missed and declined keep the Call back CTA but use compact layout for avatar/name.
+    private func isCallHistoryState(_ state: ViewState) -> Bool {
+        switch state {
+        case .ended, .missed, .declined, .failed:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    /// Returns true for states that show inline call-back/retry icon button (missed, declined, failed).
+    private func isCallHistoryStateWithCTA(_ state: ViewState) -> Bool {
+        switch state {
+        case .missed, .declined, .failed:
+            return true
+        default:
+            return false
+        }
+    }
+    
     //  MARK: - Actions
     
     @objc
@@ -327,94 +329,74 @@ class RoomDirectCallStatusCell: RoomCallBaseCell {
     
     override func render(_ cellData: MXKCellData!) {
         super.render(cellData)
-        
         viewState = .unknown
         innerContentView.isCompactForCallHistory = false
         
-        guard let bubbleCellData = cellData as? RoomBubbleCellData else {
+        guard let bubbleCellData = cellData as? RoomBubbleCellData,
+              let inviteEvent = bubbleCellData.allLinkedEvents().first(where: { $0.eventType == .callInvite }),
+              let callInviteEventContent = MXCallInviteEventContent(fromJSON: inviteEvent.content) else {
             return
         }
         
         let events = bubbleCellData.allLinkedEvents()
+        configureAvatarAndDisplayName(from: bubbleCellData)
+        configureFromInviteEvent(inviteEvent, callInviteEventContent: callInviteEventContent, events: events, bubbleCellData: bubbleCellData)
         
-        guard let inviteEvent = events.first(where: { $0.eventType == .callInvite }) else {
-            return
+        if let call = bubbleCellData.mxSession.callManager.call(withCallId: callInviteEventContent.callId) {
+            configure(withCall: call)
+        } else {
+            configureFromHistoricalEvents(events, bubbleCellData: bubbleCellData)
         }
-        
-        if bubbleCellData.senderId == bubbleCellData.mxSession.myUserId {
-            //  event sent by my user, no means in displaying our own avatar and display name
-            if let directUserId = bubbleCellData.mxSession.directUserId(inRoom: bubbleCellData.roomId) {
-                let user = bubbleCellData.mxSession.user(withUserId: directUserId)
-                
-                let placeholder = AvatarGenerator.generateAvatar(forMatrixItem: directUserId,
-                                                                 withDisplayName: user?.displayname)
-                
-                innerContentView.avatarImageView.setImageURI(user?.avatarUrl,
-                                            withType: nil,
-                                            andImageOrientation: .up,
-                                            toFitViewSize: innerContentView.avatarImageView.frame.size,
-                                            with: MXThumbnailingMethodCrop,
-                                            previewImage: placeholder,
-                                            mediaManager: bubbleCellData.mxSession.mediaManager)
-                innerContentView.avatarImageView.defaultBackgroundColor = .clear
-                
-                innerContentView.callerNameLabel.text = user?.displayname
-            }
+        innerContentView.isCompactForCallHistory = isCallHistoryState(viewState)
+    }
+    
+    private func configureAvatarAndDisplayName(from bubbleCellData: RoomBubbleCellData) {
+        if bubbleCellData.senderId == bubbleCellData.mxSession.myUserId,
+           let directUserId = bubbleCellData.mxSession.directUserId(inRoom: bubbleCellData.roomId) {
+            let user = bubbleCellData.mxSession.user(withUserId: directUserId)
+            let placeholder = AvatarGenerator.generateAvatar(forMatrixItem: directUserId, withDisplayName: user?.displayname)
+            innerContentView.avatarImageView.setImageURI(user?.avatarUrl,
+                withType: nil, andImageOrientation: .up,
+                toFitViewSize: innerContentView.avatarImageView.frame.size,
+                with: MXThumbnailingMethodCrop, previewImage: placeholder,
+                mediaManager: bubbleCellData.mxSession.mediaManager)
+            innerContentView.avatarImageView.defaultBackgroundColor = .clear
+            innerContentView.callerNameLabel.text = user?.displayname
         } else {
             innerContentView.avatarImageView.setImageURI(bubbleCellData.senderAvatarUrl,
-                                        withType: nil,
-                                        andImageOrientation: .up,
-                                        toFitViewSize: innerContentView.avatarImageView.frame.size,
-                                        with: MXThumbnailingMethodCrop,
-                                        previewImage: bubbleCellData.senderAvatarPlaceholder,
-                                        mediaManager: bubbleCellData.mxSession.mediaManager)
+                withType: nil, andImageOrientation: .up,
+                toFitViewSize: innerContentView.avatarImageView.frame.size,
+                with: MXThumbnailingMethodCrop, previewImage: bubbleCellData.senderAvatarPlaceholder,
+                mediaManager: bubbleCellData.mxSession.mediaManager)
             innerContentView.avatarImageView.defaultBackgroundColor = .clear
-            
             innerContentView.callerNameLabel.text = bubbleCellData.senderDisplayName
         }
-        
-        guard let callInviteEventContent = MXCallInviteEventContent(fromJSON: inviteEvent.content) else {
-            return
-        }
+    }
+    
+    private func configureFromInviteEvent(
+        _ inviteEvent: MXEvent,
+        callInviteEventContent: MXCallInviteEventContent,
+        events: [MXEvent],
+        bubbleCellData: RoomBubbleCellData
+    ) {
         isVideoCall = callInviteEventContent.isVideoCall()
         callDurationString = readableCallDuration(from: events)
         isIncoming = inviteEvent.sender != bubbleCellData.mxSession.myUserId
         callInviteEvent = inviteEvent
         updateCallIcon()
-        let callId = callInviteEventContent.callId
-        guard let call = bubbleCellData.mxSession.callManager.call(withCallId: callId) else {
-            
-            //  check events include a reject event
-            if let rejectEvent = events.first(where: { $0.eventType == .callReject }) {
-                configureForRejectedCall(withEvent: rejectEvent, bubbleCellData: bubbleCellData)
-                innerContentView.isCompactForCallHistory = (viewState == .ended)
-                return
-            }
-            
-            //  check events include an answer event
-            if !events.contains(where: { $0.eventType == .callAnswer }) {
-                configureForUnansweredCall()
-                innerContentView.isCompactForCallHistory = (viewState == .ended)
-                return
-            }
-            
-            //  check events include a hangup event
-            if let hangupEvent = events.first(where: { $0.eventType == .callHangup }) {
-                configureForHangupCall(withEvent: hangupEvent)
-                innerContentView.isCompactForCallHistory = (viewState == .ended)
-                return
-            }
-            
-            //  there is no reject or hangup event, we can just say this call has ended
+    }
+    
+    private func configureFromHistoricalEvents(_ events: [MXEvent], bubbleCellData: RoomBubbleCellData) {
+        if let rejectEvent = events.first(where: { $0.eventType == .callReject }) {
+            configureForRejectedCall(withEvent: rejectEvent, bubbleCellData: bubbleCellData)
+        } else if !events.contains(where: { $0.eventType == .callAnswer }) {
+            configureForUnansweredCall()
+        } else if let hangupEvent = events.first(where: { $0.eventType == .callHangup }) {
+            configureForHangupCall(withEvent: hangupEvent)
+        } else {
             viewState = .ended
             updateStatusTextForEndedCall()
-            innerContentView.isCompactForCallHistory = true
-            return
         }
-        
-        configure(withCall: call)
-        
-        innerContentView.isCompactForCallHistory = (viewState == .ended)
     }
     
     private func callDuration(from events: [MXEvent]) -> TimeInterval {

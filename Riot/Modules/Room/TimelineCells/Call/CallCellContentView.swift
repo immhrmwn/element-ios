@@ -13,7 +13,9 @@ class CallCellContentView: UIView {
     private enum Constants {
         static let callSummaryWithBottomViewHeight: CGFloat = 20
         static let callSummaryStandaloneViewHeight: CGFloat = 20 + 44
-        static let callSummaryCompactStandaloneHeight: CGFloat = 20 + 8 + 8  // status row + 8pt top/bottom padding
+        static let callSummaryCompactNoCTAHeight: CGFloat = 20 + 8 + 8   // compact, no CTA (ended call)
+        static let callSummaryCompactWithCTAHeight: CGFloat = 20 + 12 + 12  // compact with inline CTA
+        static let inlineCallBackButtonSize: CGFloat = 36
     }
     
     @IBOutlet private weak var paginationTitleView: UIView!
@@ -46,6 +48,50 @@ class CallCellContentView: UIView {
         }
     }
     
+    /// When true, show an inline icon-only call-back button next to the status text (compact layout).
+    var showInlineCallBackButton: Bool = false {
+        didSet {
+            updateInlineCallBackButton()
+        }
+    }
+    
+    /// Icon for the inline call-back button (e.g. video or voice).
+    var inlineCallBackIcon: UIImage? {
+        didSet {
+            inlineCallBackButton.setImage(inlineCallBackIcon, for: .normal)
+        }
+    }
+    
+    /// Called when the inline call-back button is tapped.
+    var onInlineCallBackTapped: (() -> Void)?
+    
+    /// Accessibility label for the inline call-back button.
+    var inlineCallBackAccessibilityLabel: String? {
+        didSet {
+            inlineCallBackButton.accessibilityLabel = inlineCallBackAccessibilityLabel
+        }
+    }
+    
+    private lazy var inlineCallBackButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(inlineCallBackButtonTapped), for: .touchUpInside)
+        button.backgroundColor = .clear
+        button.layer.cornerRadius = Constants.inlineCallBackButtonSize / 2
+        button.layer.borderWidth = 1.5
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: Constants.inlineCallBackButtonSize),
+            button.heightAnchor.constraint(equalToConstant: Constants.inlineCallBackButtonSize)
+        ])
+        return button
+    }()
+    
+    private var inlineCallBackSpacerView: UIView?
+    
+    @objc private func inlineCallBackButtonTapped() {
+        onInlineCallBackTapped?()
+    }
+    
     var statusText: String? {
         didSet {
             callStatusLabel.text = statusText
@@ -63,13 +109,42 @@ class CallCellContentView: UIView {
     }
     
     func relayoutCallSummary() {
-        if bottomContainerView.subviews.isEmpty {
-            callSummaryHeightConstraint.constant = isCompactForCallHistory
-                ? Constants.callSummaryCompactStandaloneHeight
-                : Constants.callSummaryStandaloneViewHeight
-        } else {
+        let hasBottomView = !bottomContainerView.subviews.isEmpty
+        let hasInlineButton = showInlineCallBackButton
+        if hasBottomView {
             callSummaryHeightConstraint.constant = Constants.callSummaryWithBottomViewHeight
+        } else if hasInlineButton {
+            callSummaryHeightConstraint.constant = Constants.callSummaryCompactWithCTAHeight
+        } else {
+            callSummaryHeightConstraint.constant = isCompactForCallHistory
+                ? Constants.callSummaryCompactNoCTAHeight
+                : Constants.callSummaryStandaloneViewHeight
         }
+    }
+    
+    private func updateInlineCallBackButton() {
+        applyCompactLayout()
+        guard let statusStack = callStatusLabel.superview as? UIStackView else { return }
+        if showInlineCallBackButton {
+            if inlineCallBackSpacerView == nil {
+                let spacer = UIView()
+                spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+                inlineCallBackSpacerView = spacer
+                statusStack.addArrangedSubview(spacer)
+                statusStack.addArrangedSubview(inlineCallBackButton)
+            }
+        } else {
+            if let spacer = inlineCallBackSpacerView {
+                statusStack.removeArrangedSubview(spacer)
+                spacer.removeFromSuperview()
+                inlineCallBackSpacerView = nil
+            }
+            if inlineCallBackButton.superview != nil {
+                statusStack.removeArrangedSubview(inlineCallBackButton)
+                inlineCallBackButton.removeFromSuperview()
+            }
+        }
+        relayoutCallSummary()
     }
     
     private func applyCompactLayout() {
@@ -79,7 +154,7 @@ class CallCellContentView: UIView {
         
         if let stackView = bgView?.subviews.first as? UIStackView {
             stackView.arrangedSubviews.first?.isHidden = isCompactForCallHistory
-            stackView.spacing = isCompactForCallHistory ? 4 : 8
+            stackView.spacing = isCompactForCallHistory ? (showInlineCallBackButton ? 8 : 4) : 8
         }
         
         relayoutCallSummary()
@@ -118,6 +193,8 @@ extension CallCellContentView: Themable {
         callerNameLabel.textColor = theme.textPrimaryColor
         callIconView.tintColor = theme.textSecondaryColor
         callStatusLabel.textColor = theme.textSecondaryColor
+        inlineCallBackButton.tintColor = theme.tintColor
+        inlineCallBackButton.layer.borderColor = theme.tintColor.cgColor
         
         if let bottomContainerView = bottomContainerView as? Themable {
             bottomContainerView.update(theme: theme)

@@ -72,7 +72,23 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
     }
     
     private func updateBottomContentView() {
-        bottomContentView = bottomView(for: viewState)
+        let bottomView = bottomView(for: viewState)
+        if bottomView != nil {
+            innerContentView.showInlineCallBackButton = false
+            self.bottomContentView = bottomView
+        } else if viewState == .declined {
+            innerContentView.showInlineCallBackButton = true
+            innerContentView.inlineCallBackIcon = callTypeIcon
+            innerContentView.inlineCallBackAccessibilityLabel = VectorL10n.eventFormatterGroupCallJoin
+            innerContentView.onInlineCallBackTapped = { [weak self] in
+                guard let self = self else { return }
+                self.delegate?.cell(self, didRecognizeAction: Self.joinAction, userInfo: self.actionUserInfo)
+            }
+            self.bottomContentView = nil
+        } else {
+            innerContentView.showInlineCallBackButton = false
+            self.bottomContentView = nil
+        }
     }
     
     private var callTypeIcon: UIImage {
@@ -134,16 +150,7 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
             
             return view
         case .declined:
-            let view = HorizontalButtonsContainerView.loadFromNib()
-            view.secondButton.isHidden = true
-            
-            view.firstButton.style = .positive
-            view.firstButton.setTitle(VectorL10n.eventFormatterGroupCallJoin, for: .normal)
-            view.firstButton.setImage(callTypeIcon, for: .normal)
-            view.firstButton.removeTarget(nil, action: nil, for: .touchUpInside)
-            view.firstButton.addTarget(self, action: #selector(joinAction(_:)), for: .touchUpInside)
-            
-            return view
+            return nil
         case .ended:
             return nil
         }
@@ -154,6 +161,17 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
             statusText = VectorL10n.eventFormatterCallHasEndedWithTime(callDurationString)
         } else {
             statusText = VectorL10n.eventFormatterCallHasEnded
+        }
+    }
+    
+    /// Returns true for call history states (ended, declined) that use compact layout.
+    /// Declined keeps the Join CTA but uses compact layout for avatar/name.
+    private func isCallHistoryState(_ state: ViewState) -> Bool {
+        switch state {
+        case .ended, .declined:
+            return true
+        default:
+            return false
         }
     }
     
@@ -301,11 +319,11 @@ class RoomGroupCallStatusCell: RoomCallBaseCell {
                     self.viewState = .active
                     self.statusText = VectorL10n.eventFormatterCallActiveVideo
                 }
-            } else {
-                self.viewState = .ended
-                self.updateStatusTextForEndedCall()
-            }
-            self.innerContentView.isCompactForCallHistory = (self.viewState == .ended)
+        } else {
+            self.viewState = .ended
+            self.updateStatusTextForEndedCall()
+        }
+            self.innerContentView.isCompactForCallHistory = self.isCallHistoryState(self.viewState)
         }
     }
     
